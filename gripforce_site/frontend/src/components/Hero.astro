@@ -1,0 +1,155 @@
+---
+import { LAUNCH_OFFER } from '../config.js';
+---
+
+<section class="relative overflow-hidden pt-8 md:pt-16 pb-20 md:pb-32 noise-bg">
+  <!-- Grid background -->
+  <div class="absolute inset-0 bg-grid-light dark:bg-grid-dark opacity-40 pointer-events-none" aria-hidden="true"></div>
+
+  <div class="container-edge relative">
+    <!-- Top eyebrow -->
+    <div class="flex items-center justify-between mb-10 md:mb-16">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-success animate-pulse-slow"></span>
+        <span class="label-eyebrow">
+          {LAUNCH_OFFER.active ? `Offre de lancement · ${LAUNCH_OFFER.remaining} places` : 'En vente'}
+        </span>
+      </div>
+      <span class="label-eyebrow hidden md:inline">Édition n°01</span>
+    </div>
+
+    <!-- Main headline -->
+    <div class="grid md:grid-cols-12 gap-6 md:gap-10 items-end">
+      <div class="md:col-span-7 reveal">
+        <h1 class="h-display text-display-xl">
+          Entraîne
+          <span class="inline-block relative">
+            <span class="italic font-display font-normal text-volt-500 dark:text-volt-400">ta poigne.</span>
+            <svg class="absolute -bottom-1 md:-bottom-2 left-0 w-full h-2 md:h-3" viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M2 9 Q 75 2, 150 6 T 298 5" stroke="currentColor" stroke-width="2" fill="none" class="text-volt-500 dark:text-volt-400" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <br />
+          Réveille tes
+          <span class="italic font-display font-normal">avant-bras.</span>
+        </h1>
+      </div>
+
+      <div class="md:col-span-5 reveal" style="transition-delay: 200ms;">
+        <p class="text-base md:text-lg text-ink-700 dark:text-ink-200 leading-relaxed max-w-md">
+          Un exerciseur compact et silencieux pour renforcer ta prise, soulager tes mains, et reprendre le contrôle — 5 minutes par jour, partout.
+        </p>
+        <div class="flex flex-wrap gap-3 mt-8">
+          <a href="#produit" class="btn-primary">
+            Voir le produit
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+          <a href="#benefices" class="btn-secondary">
+            Comment ça marche
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero visual - illustration du produit -->
+    <div class="relative mt-16 md:mt-24 reveal" style="transition-delay: 400ms;">
+      <div class="aspect-[16/9] md:aspect-[21/9] rounded-2xl bg-gradient-to-br from-ink-100 to-ink-200 dark:from-ink-800 dark:to-ink-900 overflow-hidden relative border border-ink-200 dark:border-ink-700">
+        <!-- Illustration SVG du produit (placeholder stylisé) -->
+        <div class="absolute inset-0 flex items-center justify-center">
+          <svg viewBox="0 0 400 300" class="w-3/4 h-3/4 max-w-md" aria-hidden="true">
+            <defs>
+              <radialGradient id="sphereGrad" cx="40%" cy="35%">
+                <stop offset="0%" stop-color="#3D3C36" />
+                <stop offset="100%" stop-color="#0D0D0C" />
+              </radialGradient>
+            </defs>
+            <!-- Sphere centrale -->
+            <circle cx="200" cy="150" r="70" fill="url(#sphereGrad)" />
+            <!-- Texture (dimples) -->
+            {Array.from({ length: 12 }).map((_, i) => {
+              const angle = (i / 12) * Math.PI * 2;
+              const r = 45;
+              const cx = 200 + Math.cos(angle) * r * 0.6;
+              const cy = 150 + Math.sin(angle) * r * 0.6;
+              return <circle cx={cx} cy={cy} r="5" fill="#1A1A18" opacity="0.7" />
+            })}
+            <!-- 6 branches avec embouts -->
+            {[
+              { angle: -90, length: 100 },
+              { angle: -30, length: 100 },
+              { angle: 30, length: 100 },
+              { angle: 90, length: 100 },
+              { angle: 150, length: 100 },
+              { angle: 210, length: 100 },
+            ].map(({ angle, length }) => {
+              const rad = (angle * Math.PI) / 180;
+              const x1 = 200 + Math.cos(rad) * 70;
+              const y1 = 150 + Math.sin(rad) * 70;
+              const x2 = 200 + Math.cos(rad) * length;
+              const y2 = 150 + Math.sin(rad) * length;
+              return (
+                <g>
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#1A1A18" stroke-width="14" stroke-linecap="round" />
+                  <circle cx={x2} cy={y2} r="14" fill="#2A2A26" stroke="#0F88FF" stroke-width="2" />
+                </g>
+              )
+            })}
+            <!-- Logo ring -->
+            <circle cx="200" cy="150" r="80" fill="none" stroke="#0F88FF" stroke-width="1" opacity="0.3" stroke-dasharray="2 4" />
+          </svg>
+        </div>
+
+        <!-- Overlay stats (corner) -->
+        <div class="absolute top-4 md:top-6 left-4 md:left-6 flex flex-col gap-1.5">
+          <span class="inline-block px-2.5 py-1 bg-ink-900/90 dark:bg-ink-50/90 text-ink-50 dark:text-ink-900 text-[10px] font-mono uppercase tracking-[0.15em] rounded-full backdrop-blur-sm">
+            Spec 01 · 12,3 cm
+          </span>
+          <span class="inline-block px-2.5 py-1 bg-ink-900/90 dark:bg-ink-50/90 text-ink-50 dark:text-ink-900 text-[10px] font-mono uppercase tracking-[0.15em] rounded-full backdrop-blur-sm">
+            Spec 02 · Silicone médical
+          </span>
+        </div>
+
+        <div class="absolute bottom-4 md:bottom-6 right-4 md:right-6 text-right">
+          <div class="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-600 dark:text-ink-400">
+            Série limitée
+          </div>
+          <div class="font-display text-3xl md:text-4xl font-medium mt-1">
+            01 / 20
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Marquee -->
+    <div class="mt-12 md:mt-16 marquee-mask overflow-hidden reveal" style="transition-delay: 500ms;">
+      <div class="flex animate-marquee gap-10 md:gap-16 whitespace-nowrap">
+        {Array.from({ length: 2 }).map(() => (
+          <div class="flex items-center gap-10 md:gap-16">
+            <span class="font-display text-lg md:text-2xl font-medium text-ink-500 dark:text-ink-400">
+              Entraîne ta poigne
+            </span>
+            <span class="w-1.5 h-1.5 rounded-full bg-volt-500"></span>
+            <span class="font-display italic text-lg md:text-2xl text-ink-500 dark:text-ink-400">
+              Soulage tes mains
+            </span>
+            <span class="w-1.5 h-1.5 rounded-full bg-volt-500"></span>
+            <span class="font-display text-lg md:text-2xl font-medium text-ink-500 dark:text-ink-400">
+              5 min par jour
+            </span>
+            <span class="w-1.5 h-1.5 rounded-full bg-volt-500"></span>
+            <span class="font-display italic text-lg md:text-2xl text-ink-500 dark:text-ink-400">
+              Partout avec toi
+            </span>
+            <span class="w-1.5 h-1.5 rounded-full bg-volt-500"></span>
+            <span class="font-display text-lg md:text-2xl font-medium text-ink-500 dark:text-ink-400">
+              Fabriqué à Dakar
+            </span>
+            <span class="w-1.5 h-1.5 rounded-full bg-volt-500"></span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

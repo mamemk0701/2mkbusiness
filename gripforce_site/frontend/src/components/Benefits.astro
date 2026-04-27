@@ -1,0 +1,57 @@
+---
+import { BENEFITS } from '../config.js';
+---
+
+<section id="benefices" class="relative py-20 md:py-32 bg-ink-100/40 dark:bg-ink-800/40 border-y border-ink-200 dark:border-ink-700">
+  <div class="container-edge">
+    <!-- Header -->
+    <div class="grid md:grid-cols-12 gap-6 mb-16 md:mb-24 reveal">
+      <div class="md:col-span-3">
+        <div class="label-eyebrow">Pourquoi GripForce</div>
+      </div>
+      <div class="md:col-span-9">
+        <h2 class="h-display text-display-lg max-w-3xl">
+          Quatre raisons<br />
+          de <span class="italic font-normal text-volt-500 dark:text-volt-400">changer</span> tes mains.
+        </h2>
+      </div>
+    </div>
+
+    <!-- Benefits grid -->
+    <div class="space-y-6 md:space-y-0">
+      {BENEFITS.map((benefit, i) => (
+        <div
+          class="reveal grid md:grid-cols-12 gap-6 md:gap-10 items-start py-10 md:py-16 border-t border-ink-200 dark:border-ink-700 last:border-b"
+          style={`transition-delay: ${i * 100}ms;`}
+        >
+          <!-- Number -->
+          <div class="md:col-span-2">
+            <div class="font-mono text-xs uppercase tracking-[0.2em] text-ink-500 dark:text-ink-400">
+              {String(i + 1).padStart(2, '0')} / 04
+            </div>
+          </div>
+
+          <!-- Title + Description -->
+          <div class="md:col-span-6">
+            <h3 class="h-display text-display-md mb-4">
+              {benefit.title}
+            </h3>
+            <p class="text-base text-ink-700 dark:text-ink-200 leading-relaxed max-w-lg">
+              {benefit.description}
+            </p>
+          </div>
+
+          <!-- Metric -->
+          <div class="md:col-span-4 md:pl-10 md:border-l md:border-ink-200 md:dark:border-ink-700">
+            <div class="font-display text-6xl md:text-7xl font-medium text-volt-500 dark:text-volt-400 tabular-nums leading-none">
+              {benefit.metric}
+            </div>
+            <div class="text-sm text-ink-500 dark:text-ink-400 mt-2">
+              {benefit.metricLabel}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

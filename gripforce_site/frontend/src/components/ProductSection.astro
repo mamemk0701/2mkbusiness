@@ -1,0 +1,150 @@
+---
+import { PRODUCTS, LAUNCH_OFFER, SPECS } from '../config.js';
+import ProductActions from './ProductActions.jsx';
+
+const product = PRODUCTS[0]; // GripForce Noir (principal)
+const price = LAUNCH_OFFER.active ? product.priceLaunch : product.priceNormal;
+---
+
+<section id="produit" class="relative py-20 md:py-32">
+  <div class="container-edge">
+    <div class="grid md:grid-cols-2 gap-10 md:gap-16 lg:gap-24 items-center">
+      <!-- Image produit (gauche) -->
+      <div class="relative reveal">
+        <div class="aspect-square rounded-2xl bg-gradient-to-br from-ink-100 to-ink-200 dark:from-ink-800 dark:to-ink-900 border border-ink-200 dark:border-ink-700 overflow-hidden relative">
+          <!-- Visual -->
+          <div class="absolute inset-0 flex items-center justify-center">
+            <svg viewBox="0 0 300 300" class="w-4/5 h-4/5" aria-hidden="true">
+              <defs>
+                <radialGradient id="prodGrad" cx="40%" cy="35%">
+                  <stop offset="0%" stop-color="#3D3C36" />
+                  <stop offset="100%" stop-color="#0D0D0C" />
+                </radialGradient>
+              </defs>
+              <circle cx="150" cy="150" r="80" fill="url(#prodGrad)" />
+              {Array.from({ length: 18 }).map((_, i) => {
+                const angle = (i / 18) * Math.PI * 2;
+                const r = 50 + (i % 2) * 10;
+                const cx = 150 + Math.cos(angle) * r * 0.55;
+                const cy = 150 + Math.sin(angle) * r * 0.55;
+                return <circle cx={cx} cy={cy} r="6" fill="#1A1A18" opacity="0.7" />
+              })}
+              {[-90, -30, 30, 90, 150, 210].map((angle) => {
+                const rad = (angle * Math.PI) / 180;
+                const x1 = 150 + Math.cos(rad) * 80;
+                const y1 = 150 + Math.sin(rad) * 80;
+                const x2 = 150 + Math.cos(rad) * 120;
+                const y2 = 150 + Math.sin(rad) * 120;
+                return (
+                  <g>
+                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#1A1A18" stroke-width="16" stroke-linecap="round" />
+                    <circle cx={x2} cy={y2} r="16" fill="#2A2A26" stroke="#0F88FF" stroke-width="2" />
+                  </g>
+                )
+              })}
+            </svg>
+          </div>
+
+          <!-- Decorative corner -->
+          <div class="absolute top-4 left-4 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-500 dark:text-ink-400">
+            Ref. GF-001 · Noir
+          </div>
+          <div class="absolute bottom-4 right-4 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-500 dark:text-ink-400">
+            Photo · 01
+          </div>
+        </div>
+
+        <!-- Thumbnails (decorative, just for visual balance) -->
+        <div class="grid grid-cols-3 gap-3 mt-3">
+          {[1, 2, 3].map((i) => (
+            <div class="aspect-square rounded-lg bg-ink-100 dark:bg-ink-800 border border-ink-200 dark:border-ink-700 flex items-center justify-center">
+              <span class="font-mono text-[10px] uppercase tracking-wider text-ink-400">0{i + 1}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- Contenu (droite) -->
+      <div class="reveal" style="transition-delay: 200ms;">
+        <div class="label-eyebrow mb-4">
+          GripForce · Édition n°01
+        </div>
+
+        <h2 class="h-display text-display-md mb-6">
+          5 doigts + 1 paume.<br />
+          Un seul objectif : <span class="italic font-normal">la force.</span>
+        </h2>
+
+        <p class="text-base md:text-lg text-ink-700 dark:text-ink-200 leading-relaxed mb-8 max-w-lg">
+          {product.description}
+        </p>
+
+        <!-- Prix -->
+        <div class="flex items-baseline gap-4 mb-8">
+          <span class="font-display text-5xl md:text-6xl font-medium tabular-nums">
+            {price.toLocaleString('fr-FR')}
+            <span class="text-2xl text-ink-500 dark:text-ink-400 font-sans">F</span>
+          </span>
+          {LAUNCH_OFFER.active && product.priceOld && (
+            <span class="font-sans text-xl text-ink-400 line-through tabular-nums">
+              {product.priceOld.toLocaleString('fr-FR')} F
+            </span>
+          )}
+        </div>
+
+        {LAUNCH_OFFER.active && (
+          <div class="inline-flex items-center gap-2.5 px-4 py-2 bg-volt-50 dark:bg-volt-900/30 border border-volt-200 dark:border-volt-700 rounded-full text-volt-700 dark:text-volt-300 text-sm font-medium mb-8">
+            <span class="w-1.5 h-1.5 rounded-full bg-volt-500 animate-pulse-slow"></span>
+            Livraison offerte · {LAUNCH_OFFER.remaining} dernières places
+          </div>
+        )}
+
+        <!-- Actions (client-side React) -->
+        <ProductActions
+          client:load
+          products={PRODUCTS.map(p => ({
+            id: p.id,
+            name: p.name,
+            color: p.color,
+            colorHex: p.colorHex,
+          }))}
+          price={price}
+        />
+
+        <!-- Trust micro-details -->
+        <div class="grid grid-cols-3 gap-4 mt-10 pt-8 border-t border-ink-200 dark:border-ink-700">
+          <div>
+            <div class="font-display text-xl font-medium">24h</div>
+            <div class="text-xs text-ink-500 dark:text-ink-400 mt-0.5">Livraison Dakar</div>
+          </div>
+          <div>
+            <div class="font-display text-xl font-medium">30 jours</div>
+            <div class="text-xs text-ink-500 dark:text-ink-400 mt-0.5">Garantie remboursé</div>
+          </div>
+          <div>
+            <div class="font-display text-xl font-medium">Wave · OM</div>
+            <div class="text-xs text-ink-500 dark:text-ink-400 mt-0.5">Paiement mobile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Specs table -->
+    <div class="mt-20 md:mt-28 reveal">
+      <div class="flex items-center justify-between mb-8 md:mb-12">
+        <h3 class="h-display text-display-md">
+          Spécifications
+        </h3>
+        <span class="label-eyebrow hidden md:inline">Fiche technique</span>
+      </div>
+      <div class="grid md:grid-cols-3 gap-4 md:gap-6">
+        {SPECS.map((spec) => (
+          <div class="py-4 px-5 bg-ink-100/60 dark:bg-ink-800/60 rounded-xl border border-ink-200 dark:border-ink-700">
+            <div class="label-eyebrow mb-1.5">{spec.label}</div>
+            <div class="font-display text-xl font-medium">{spec.value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

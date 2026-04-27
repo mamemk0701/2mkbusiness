@@ -1,0 +1,50 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../config.js';
+---
+
+<BaseLayout title={`CGV · ${SITE.name}`} description="Conditions générales de vente de GripForce">
+  <section class="container-edge py-16 md:py-24">
+    <div class="max-w-3xl">
+      <div class="label-eyebrow mb-4">Conditions générales</div>
+      <h1 class="h-display text-display-lg mb-10">Conditions de vente</h1>
+
+      <div class="prose prose-lg max-w-none text-ink-700 dark:text-ink-200 space-y-8">
+        <section>
+          <h2 class="font-display text-2xl font-medium mb-3 text-ink-900 dark:text-ink-50">1. Éditeur</h2>
+          <p>Ce site est édité par 2MK Business, basé à Dakar, Sénégal. Marque commerciale : GripForce. Contact : WhatsApp {SITE.whatsapp.displayNumber}.</p>
+        </section>
+
+        <section>
+          <h2 class="font-display text-2xl font-medium mb-3 text-ink-900 dark:text-ink-50">2. Commandes</h2>
+          <p>Les commandes sont passées via WhatsApp après avoir rempli le panier sur le site. Chaque commande fait l'objet d'une confirmation manuelle. Le prix affiché au moment de la commande fait foi.</p>
+        </section>
+
+        <section>
+          <h2 class="font-display text-2xl font-medium mb-3 text-ink-900 dark:text-ink-50">3. Paiement</h2>
+          <p>Le paiement s'effectue par Wave ou Orange Money, aux coordonnées communiquées après confirmation de commande. Aucune livraison n'est effectuée avant réception du paiement.</p>
+        </section>
+
+        <section>
+          <h2 class="font-display text-2xl font-medium mb-3 text-ink-900 dark:text-ink-50">4. Livraison</h2>
+          <p>Livraison sous 24h à Dakar et banlieue. Livraison offerte pour les 15 premières commandes. Au-delà, un supplément de 1 000 à 2 500 FCFA selon la zone peut s'appliquer.</p>
+        </section>
+
+        <section>
+          <h2 class="font-display text-2xl font-medium mb-3 text-ink-900 dark:text-ink-50">5. Garantie et retours</h2>
+          <p>Garantie 30 jours satisfait ou remboursé. Si le produit présente un défaut ou ne te convient pas, contacte-nous dans les 30 jours pour un remplacement ou un remboursement (produit non utilisé, dans son emballage d'origine).</p>
+        </section>
+
+        <section>
+          <h2 class="font-display text-2xl font-medium mb-3 text-ink-900 dark:text-ink-50">6. Données personnelles</h2>
+          <p>Les informations collectées lors d'une commande (nom, numéro WhatsApp, adresse) sont utilisées uniquement pour traiter la commande et la livraison. Elles ne sont ni revendues ni partagées.</p>
+        </section>
+
+        <section>
+          <h2 class="font-display text-2xl font-medium mb-3 text-ink-900 dark:text-ink-50">7. Contact</h2>
+          <p>Pour toute question ou réclamation : WhatsApp <a href={`https://wa.me/${SITE.whatsapp.number}`} class="text-volt-500 underline">{SITE.whatsapp.displayNumber}</a>.</p>
+        </section>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

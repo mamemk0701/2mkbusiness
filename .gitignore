@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+*.log
+*.db
+.DS_Store
+node_modules/
+dist/
+config_local.py
+*.secret

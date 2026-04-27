@@ -1,0 +1,1360 @@
+from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta
+from functools import wraps
+import os
+import json
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'mk2business_super_secret_key_2026_guindima'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://mk_user:b%40n%40neETp0mme@localhost/mk_db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+db = SQLAlchemy(app)
+
+# ==================== MODELS ====================
+class Category(db.Model):
+    __tablename__ = 'categories'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    slug = db.Column(db.String(50), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    icon = db.Column(db.String(10), default='📦')
+    color = db.Column(db.String(20), default='#1a2744')
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    products = db.relationship('Product', backref='category_rel', lazy=True)
+
+class Product(db.Model):
+    __tablename__ = 'products'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    price = db.Column(db.Integer, default=0)
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
+    category = db.Column(db.String(50), default='Général')
+    stock_quantity = db.Column(db.Integer, default=0)
+    alert_threshold = db.Column(db.Integer, default=5)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Client(db.Model):
+    __tablename__ = 'clients'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    address = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Order(db.Model):
+    __tablename__ = 'orders'
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')
+    payment_status = db.Column(db.String(20), default='unpaid')
+    total_amount = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    client = db.relationship('Client', backref=db.backref('orders', lazy=True))
+    order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
+
+class OrderItem(db.Model):
+    __tablename__ = 'order_items'
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
+    product_code = db.Column(db.String(20), nullable=False)
+    product_name = db.Column(db.String(100), nullable=False)
+    variant = db.Column(db.String(50))
+    quantity = db.Column(db.Integer, default=1)
+    unit_price = db.Column(db.Integer, default=0)
+
+
+# ==================== KIT COMPONENTS ====================
+# Définit quels produits composent chaque kit
+KIT_COMPONENTS = {
+    'KS': [('T', 1), ('BS', 1)],   # Kit Saytu = 1 Tracker + 1 Bracelet Silicone
+    'KG': [('T', 1), ('BN', 1)],   # Kit Guestu = 1 Tracker + 1 Bracelet Nylon
+}
+
+def get_available_stock(product):
+    """Calcule le stock réel disponible pour un produit.
+    Pour les kits, c'est le min des composants disponibles."""
+    if product.code in KIT_COMPONENTS:
+        components = KIT_COMPONENTS[product.code]
+        min_stock = float('inf')
+        for comp_code, comp_qty in components:
+            comp = Product.query.filter_by(code=comp_code).first()
+            if comp:
+                min_stock = min(min_stock, comp.stock_quantity // comp_qty)
+            else:
+                min_stock = 0
+        return min_stock if min_stock != float('inf') else 0
+    return product.stock_quantity
+
+def decrement_stock(product_code, quantity):
+    """Décrémente le stock. Pour les kits, décrémente les composants."""
+    if product_code in KIT_COMPONENTS:
+        for comp_code, comp_qty in KIT_COMPONENTS[product_code]:
+            comp = Product.query.filter_by(code=comp_code).first()
+            if comp:
+                comp.stock_quantity = max(0, comp.stock_quantity - (comp_qty * quantity))
+    else:
+        product = Product.query.filter_by(code=product_code).first()
+        if product:
+            product.stock_quantity = max(0, product.stock_quantity - quantity)
+
+def restore_stock(product_code, quantity):
+    """Restaure le stock quand une commande est supprimée ou annulée."""
+    if product_code in KIT_COMPONENTS:
+        for comp_code, comp_qty in KIT_COMPONENTS[product_code]:
+            comp = Product.query.filter_by(code=comp_code).first()
+            if comp:
+                comp.stock_quantity += comp_qty * quantity
+    else:
+        product = Product.query.filter_by(code=product_code).first()
+        if product:
+            product.stock_quantity += quantity
+
+# ==================== AUTH ====================
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "Guindima2MK@2026!"
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ==================== STYLES ====================
+BASE_STYLE = '''
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Poppins', sans-serif; background: #f5f7fa; color: #1a2744; }
+    .header { background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); padding: 15px 25px; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .header h1 { font-size: 20px; display: flex; align-items: center; gap: 10px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .header-actions a { color: white; text-decoration: none; font-size: 13px; padding: 8px 15px; border-radius: 6px; opacity: 0.85; transition: all 0.2s; }
+    .header-actions a:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+    .header-actions a.active { background: rgba(255,255,255,0.2); opacity: 1; }
+    .logout-btn { background: #ef4444 !important; opacity: 1 !important; }
+    .add-btn { background: #10b981 !important; opacity: 1 !important; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 25px; }
+    .breadcrumb { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 14px; }
+    .breadcrumb a { color: #666; text-decoration: none; }
+    .breadcrumb a:hover { color: #1a2744; }
+    .breadcrumb span { color: #999; }
+    .page-title { font-size: 28px; margin-bottom: 25px; display: flex; align-items: center; gap: 15px; }
+    .page-title .icon { font-size: 36px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .stat-card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .stat-card .number { font-size: 32px; font-weight: 700; color: #1a2744; }
+    .stat-card .label { font-size: 13px; color: #666; margin-top: 5px; }
+    .stat-card.success .number { color: #10b981; }
+    .stat-card.warning .number { color: #f59e0b; }
+    .stat-card.danger .number { color: #ef4444; }
+    .stat-card.primary .number { color: #3b82f6; }
+    .card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; }
+    .card-header { background: #f8f9fa; padding: 18px 25px; border-bottom: 1px solid #eee; font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .card-body { padding: 20px 25px; }
+    .categories-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .category-card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-decoration: none; color: inherit; display: block; border-left: 5px solid #1a2744; }
+    .category-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+    .category-card .icon { font-size: 40px; margin-bottom: 15px; }
+    .category-card h3 { font-size: 20px; margin-bottom: 8px; color: #1a2744; }
+    .category-card .description { font-size: 13px; color: #666; margin-bottom: 15px; }
+    .category-card .stats-row { display: flex; gap: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+    .category-card .stat { text-align: center; }
+    .category-card .stat-value { font-size: 18px; font-weight: 700; color: #1a2744; }
+    .category-card .stat-label { font-size: 11px; color: #999; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 14px 18px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f8f9fa; font-weight: 600; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { font-size: 14px; }
+    .status, .payment, .badge { padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .status.pending, .badge.warning { background: #fef3c7; color: #92400e; }
+    .status.confirmed { background: #dbeafe; color: #1e40af; }
+    .status.shipping { background: #e0e7ff; color: #3730a3; }
+    .status.delivered, .badge.success { background: #d1fae5; color: #065f46; }
+    .status.cancelled, .badge.danger { background: #fee2e2; color: #991b1b; }
+    .payment.unpaid { background: #fee2e2; color: #991b1b; }
+    .payment.deposit { background: #fef3c7; color: #92400e; }
+    .payment.paid { background: #d1fae5; color: #065f46; }
+    .badge.info { background: #dbeafe; color: #1e40af; }
+    .actions { display: flex; gap: 8px; }
+    .btn { padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: transform 0.1s, box-shadow 0.1s; font-weight: 500; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .btn-primary { background: #1a2744; color: white; }
+    .btn-success { background: #10b981; color: white; }
+    .btn-edit { background: #3b82f6; color: white; }
+    .btn-delete { background: #ef4444; color: white; }
+    .btn-view { background: #8b5cf6; color: white; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+    .empty { text-align: center; padding: 60px 20px; color: #999; }
+    .empty-icon { font-size: 50px; margin-bottom: 15px; }
+    .form-container { background: white; border-radius: 16px; padding: 35px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 700px; margin: 0 auto; }
+    .form-title { font-size: 18px; margin-bottom: 25px; color: #1a2744; padding-bottom: 15px; border-bottom: 2px solid #eee; }
+    .form-group { margin-bottom: 22px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; color: #1a2744; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 14px 18px; border: 2px solid #eee; border-radius: 10px; font-size: 14px; font-family: inherit; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #1a2744; box-shadow: 0 0 0 3px rgba(26,39,68,0.1); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .form-actions { display: flex; gap: 15px; margin-top: 30px; }
+    .btn-submit { background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); color: white; padding: 16px 35px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-cancel { background: #f3f4f6; color: #666; padding: 16px 35px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; }
+    .product-item { background: #f8f9fa; padding: 18px; border-radius: 10px; margin-bottom: 12px; }
+    .product-row { display: grid; grid-template-columns: 2fr 1fr 80px 50px; gap: 12px; align-items: center; }
+    .product-row select, .product-row input { padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 13px; }
+    .remove-product { background: #ef4444; color: white; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .add-product-btn { background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 12px; font-weight: 500; }
+    .alert { padding: 18px 22px; border-radius: 10px; margin-bottom: 25px; font-size: 14px; }
+    .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+    .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+    .product-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .product-card h4 { font-size: 15px; margin-bottom: 5px; }
+    .product-card .code { font-size: 11px; color: #999; margin-bottom: 12px; }
+    .product-card .price { font-size: 22px; font-weight: 700; color: #d4a853; margin: 12px 0; }
+    .product-card .stock-info { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid #eee; font-size: 13px; }
+    .stock-ok { color: #10b981; }
+    .stock-low { color: #f59e0b; }
+    .stock-out { color: #ef4444; }
+    .tabs { display: flex; gap: 5px; margin-bottom: 25px; background: white; padding: 8px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .tab { padding: 12px 24px; border-radius: 8px; text-decoration: none; color: #666; font-weight: 500; font-size: 14px; transition: all 0.2s; }
+    .tab:hover { background: #f3f4f6; }
+    .tab.active { background: #1a2744; color: white; }
+    .order-detail { background: white; border-radius: 16px; padding: 30px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .order-detail h3 { margin-bottom: 20px; color: #1a2744; font-size: 18px; }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+    .detail-item { padding: 18px; background: #f8f9fa; border-radius: 10px; }
+    .detail-item label { font-size: 12px; color: #666; display: block; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .detail-item span { font-size: 16px; font-weight: 600; color: #1a2744; }
+    .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; background: white; color: #666; transition: all 0.2s; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .filter-btn:hover, .filter-btn.active { background: #1a2744; color: white; }
+    @media (max-width: 768px) {
+        .header { padding: 15px; }
+        .header h1 { font-size: 16px; }
+        .header-actions { width: 100%; justify-content: center; }
+        .container { padding: 15px; }
+        .stats { grid-template-columns: repeat(2, 1fr); }
+        .form-row, .form-row-3 { grid-template-columns: 1fr; }
+        .product-row { grid-template-columns: 1fr; gap: 8px; }
+        table { display: block; overflow-x: auto; }
+        .categories-grid { grid-template-columns: 1fr; }
+    }
+</style>
+'''
+
+# ==================== LOGIN ====================
+LOGIN_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - 2MK Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-container { background: white; border-radius: 24px; padding: 45px; width: 100%; max-width: 420px; box-shadow: 0 25px 80px rgba(0,0,0,0.3); }
+        .logo { text-align: center; margin-bottom: 35px; }
+        .logo h1 { color: #1a2744; font-size: 26px; margin-bottom: 8px; }
+        .logo p { color: #d4a853; font-size: 14px; font-weight: 500; }
+        .form-group { margin-bottom: 22px; }
+        .form-group label { display: block; margin-bottom: 10px; color: #1a2744; font-weight: 500; font-size: 14px; }
+        .form-group input { width: 100%; padding: 16px 20px; border: 2px solid #eee; border-radius: 12px; font-size: 15px; font-family: inherit; transition: border-color 0.2s; }
+        .form-group input:focus { outline: none; border-color: #d4a853; }
+        .error { background: #fef2f2; color: #b91c1c; padding: 14px 18px; border-radius: 10px; margin-bottom: 22px; font-size: 13px; text-align: center; }
+        .submit-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s; }
+        .submit-btn:hover { transform: translateY(-2px); }
+        .footer-text { text-align: center; margin-top: 28px; color: #999; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo"><h1>🔐 Admin Panel</h1><p>2MK Business</p></div>
+        {% if error %}<div class="error">{{ error }}</div>{% endif %}
+        <form method="POST">
+            <div class="form-group"><label>Nom d'utilisateur</label><input type="text" name="username" required></div>
+            <div class="form-group"><label>Mot de passe</label><input type="password" name="password" required></div>
+            <button type="submit" class="submit-btn">Se connecter</button>
+        </form>
+        <p class="footer-text">Accès réservé aux administrateurs</p>
+    </div>
+</body>
+</html>
+'''
+
+# ==================== DASHBOARD PRINCIPAL ====================
+DASHBOARD_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - 2MK Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    ''' + BASE_STYLE + '''
+</head>
+<body>
+    <header class="header">
+        <h1>📊 2MK Business</h1>
+        <div class="header-actions">
+            <a href="/" class="active">🏠 Dashboard</a>
+            <a href="/categories">📁 Catégories</a>
+            <a href="/category/new" class="add-btn">+ Nouvelle catégorie</a>
+            <a href="/logout" class="logout-btn">Déconnexion</a>
+        </div>
+    </header>
+    <div class="container">
+        {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number">{{ stats.total_orders }}</div>
+                <div class="label">Total commandes</div>
+            </div>
+            <div class="stat-card success">
+                <div class="number">{{ "{:,}".format(stats.total_revenue).replace(",", " ") }} F</div>
+                <div class="label">Revenu total</div>
+            </div>
+            <div class="stat-card primary">
+                <div class="number">{{ stats.total_categories }}</div>
+                <div class="label">Lignes de produits</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">{{ stats.total_products }}</div>
+                <div class="label">Produits</div>
+            </div>
+        </div>
+        
+        <h2 style="margin-bottom: 20px; font-size: 20px;">📦 Mes lignes de produits</h2>
+        
+        {% if categories %}
+        <div class="categories-grid">
+            {% for cat in categories %}
+            <a href="/category/{{ cat.slug }}" class="category-card" style="border-left-color: {{ cat.color }};">
+                <div class="icon">{{ cat.icon }}</div>
+                <h3>{{ cat.name }}</h3>
+                <p class="description">{{ cat.description or 'Cliquez pour voir les détails' }}</p>
+                <div class="stats-row">
+                    <div class="stat">
+                        <div class="stat-value">{{ cat.order_count }}</div>
+                        <div class="stat-label">Commandes</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">{{ "{:,}".format(cat.revenue).replace(",", " ") }} F</div>
+                        <div class="stat-label">Revenu</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">{{ cat.product_count }}</div>
+                        <div class="stat-label">Produits</div>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">
+            <div class="empty-icon">📦</div>
+            <p>Aucune ligne de produits créée</p>
+            <a href="/category/new" class="btn btn-success" style="margin-top: 20px;">+ Créer ma première ligne</a>
+        </div>
+        {% endif %}
+        
+        {% if recent_orders %}
+        <div class="card" style="margin-top: 30px;">
+            <div class="card-header">
+                <span>📋 Dernières commandes (toutes catégories)</span>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>#</th><th>Client</th><th>Catégorie</th><th>Total</th><th>Statut</th><th>Date</th></tr>
+                </thead>
+                <tbody>
+                    {% for order in recent_orders %}
+                    <tr>
+                        <td><strong>{{ order.id }}</strong></td>
+                        <td>{{ order.client.name }}</td>
+                        <td><span class="badge info">{{ order.category_name }}</span></td>
+                        <td><strong>{{ "{:,}".format(order.total_amount).replace(",", " ") }} F</strong></td>
+                        <td><span class="status {{ order.status }}">{{ order.status }}</span></td>
+                        <td>{{ order.created_at.strftime('%d/%m/%y %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
+'''
+
+# ==================== CATEGORY PAGE ====================
+CATEGORY_PAGE_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ category.name }} - 2MK Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    ''' + BASE_STYLE + '''
+</head>
+<body>
+    <header class="header" style="background: linear-gradient(135deg, {{ category.color }} 0%, {{ category.color }}dd 100%);">
+        <h1>{{ category.icon }} {{ category.name }}</h1>
+        <div class="header-actions">
+            <a href="/">🏠 Dashboard</a>
+            <a href="/category/{{ category.slug }}" class="active">📊 Vue d'ensemble</a>
+            <a href="/category/{{ category.slug }}/orders">📋 Commandes</a>
+            <a href="/category/{{ category.slug }}/products">📦 Produits</a>
+            <a href="/category/{{ category.slug }}/order/new" class="add-btn">+ Commande</a>
+            <a href="/logout" class="logout-btn">Déconnexion</a>
+        </div>
+    </header>
+    <div class="container">
+        {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+        
+        <div class="breadcrumb">
+            <a href="/">🏠 Dashboard</a>
+            <span>›</span>
+            <span>{{ category.name }}</span>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number">{{ stats.total_orders }}</div>
+                <div class="label">Total commandes</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="number">{{ stats.pending_orders }}</div>
+                <div class="label">En attente</div>
+            </div>
+            <div class="stat-card success">
+                <div class="number">{{ stats.delivered_orders }}</div>
+                <div class="label">Livrées</div>
+            </div>
+            <div class="stat-card success">
+                <div class="number">{{ "{:,}".format(stats.revenue).replace(",", " ") }} F</div>
+                <div class="label">Revenu (payé)</div>
+            </div>
+            <div class="stat-card primary">
+                <div class="number">{{ stats.total_products }}</div>
+                <div class="label">Produits</div>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px;">
+            <div class="card">
+                <div class="card-header">
+                    <span>📋 Dernières commandes</span>
+                    <a href="/category/{{ category.slug }}/orders" class="btn btn-sm btn-primary">Voir tout</a>
+                </div>
+                {% if orders %}
+                <table>
+                    <thead><tr><th>#</th><th>Client</th><th>Total</th><th>Statut</th><th>Paiement</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        {% for order in orders[:10] %}
+                        <tr>
+                            <td><strong>{{ order.id }}</strong></td>
+                            <td>{{ order.client.name }}<br><small style="color:#999;">{{ order.client.phone }}</small></td>
+                            <td><strong>{{ "{:,}".format(order.total_amount).replace(",", " ") }} F</strong></td>
+                            <td><span class="status {{ order.status }}">{{ order.status }}</span></td>
+                            <td><span class="payment {{ order.payment_status }}">{{ order.payment_status }}</span></td>
+                            <td class="actions">
+                                <a href="/category/{{ category.slug }}/order/{{ order.id }}" class="btn btn-sm btn-view">👁</a>
+                                <a href="/category/{{ category.slug }}/order/{{ order.id }}/edit" class="btn btn-sm btn-edit">✏️</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty">Aucune commande</div>
+                {% endif %}
+            </div>
+            
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <span>📦 Produits</span>
+                        <a href="/category/{{ category.slug }}/product/new" class="btn btn-sm btn-success">+ Ajouter</a>
+                    </div>
+                    <div class="card-body">
+                        {% if products %}
+                            {% for product in products %}
+                            <div style="padding: 12px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>{{ product.name }}</strong><br>
+                                    <small style="color: #999;">{{ product.code }}</small>
+                                </div>
+                                <div style="text-align: right;">
+                                    <strong style="color: #d4a853;">{{ "{:,}".format(product.price).replace(",", " ") }} F</strong><br>
+                                    <small class="{% if product.stock_quantity == 0 %}stock-out{% elif product.stock_quantity <= product.alert_threshold %}stock-low{% else %}stock-ok{% endif %}">
+                                        Stock: {{ product.available_stock }}
+                                    </small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                        <div class="empty" style="padding: 30px;">Aucun produit</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header"><span>⚙️ Actions</span></div>
+                    <div class="card-body">
+                        <a href="/category/{{ category.slug }}/edit" class="btn btn-edit" style="width: 100%; justify-content: center; margin-bottom: 10px;">✏️ Modifier la catégorie</a>
+                        <a href="/category/{{ category.slug }}/product/new" class="btn btn-success" style="width: 100%; justify-content: center; margin-bottom: 10px;">📦 Ajouter un produit</a>
+                        <a href="/category/{{ category.slug }}/order/new" class="btn btn-primary" style="width: 100%; justify-content: center;">📋 Nouvelle commande</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+'''
+
+# ==================== CATEGORY ORDERS ====================
+CATEGORY_ORDERS_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commandes {{ category.name }} - 2MK Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    ''' + BASE_STYLE + '''
+</head>
+<body>
+    <header class="header" style="background: linear-gradient(135deg, {{ category.color }} 0%, {{ category.color }}dd 100%);">
+        <h1>{{ category.icon }} {{ category.name }}</h1>
+        <div class="header-actions">
+            <a href="/">🏠 Dashboard</a>
+            <a href="/category/{{ category.slug }}">📊 Vue d'ensemble</a>
+            <a href="/category/{{ category.slug }}/orders" class="active">📋 Commandes</a>
+            <a href="/category/{{ category.slug }}/products">📦 Produits</a>
+            <a href="/category/{{ category.slug }}/order/new" class="add-btn">+ Commande</a>
+            <a href="/logout" class="logout-btn">Déconnexion</a>
+        </div>
+    </header>
+    <div class="container">
+        {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+        
+        <div class="breadcrumb">
+            <a href="/">🏠 Dashboard</a><span>›</span>
+            <a href="/category/{{ category.slug }}">{{ category.name }}</a><span>›</span>
+            <span>Commandes</span>
+        </div>
+        
+        <div class="filters">
+            <a href="?filter=all" class="filter-btn {% if filter_type == 'all' %}active{% endif %}">Toutes</a>
+            <a href="?filter=pending" class="filter-btn {% if filter_type == 'pending' %}active{% endif %}">En attente</a>
+            <a href="?filter=confirmed" class="filter-btn {% if filter_type == 'confirmed' %}active{% endif %}">Confirmées</a>
+            <a href="?filter=shipping" class="filter-btn {% if filter_type == 'shipping' %}active{% endif %}">En livraison</a>
+            <a href="?filter=delivered" class="filter-btn {% if filter_type == 'delivered' %}active{% endif %}">Livrées</a>
+            <a href="?filter=unpaid" class="filter-btn {% if filter_type == 'unpaid' %}active{% endif %}">Non payées</a>
+            <a href="?filter=paid" class="filter-btn {% if filter_type == 'paid' %}active{% endif %}">Payées</a>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span>📋 Commandes {{ category.name }} ({{ orders|length }})</span>
+                <a href="/category/{{ category.slug }}/order/new" class="btn btn-success">+ Nouvelle commande</a>
+            </div>
+            {% if orders %}
+            <table>
+                <thead>
+                    <tr><th>#</th><th>Client</th><th>Téléphone</th><th>Produits</th><th>Total</th><th>Statut</th><th>Paiement</th><th>Date</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><strong>{{ order.id }}</strong></td>
+                        <td>{{ order.client.name }}</td>
+                        <td>{{ order.client.phone }}</td>
+                        <td style="max-width: 200px; font-size: 12px;">
+                            {% for item in order.order_items %}
+                            {{ item.quantity }}x {{ item.product_name[:25] }}{% if item.variant %} ({{ item.variant[:10] }}){% endif %}{% if not loop.last %}<br>{% endif %}
+                            {% endfor %}
+                        </td>
+                        <td><strong>{{ "{:,}".format(order.total_amount).replace(",", " ") }} F</strong></td>
+                        <td><span class="status {{ order.status }}">{{ order.status }}</span></td>
+                        <td><span class="payment {{ order.payment_status }}">{{ order.payment_status }}</span></td>
+                        <td>{{ order.created_at.strftime('%d/%m/%y') }}</td>
+                        <td class="actions">
+                            <a href="/category/{{ category.slug }}/order/{{ order.id }}" class="btn btn-sm btn-view">👁</a>
+                            <a href="/category/{{ category.slug }}/order/{{ order.id }}/edit" class="btn btn-sm btn-edit">✏️</a>
+                            <a href="/category/{{ category.slug }}/order/{{ order.id }}/delete" class="btn btn-sm btn-delete" onclick="return confirm('Supprimer ?')">🗑</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">
+                <div class="empty-icon">📋</div>
+                <p>Aucune commande trouvée</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
+'''
+
+# ==================== CATEGORY PRODUCTS ====================
+CATEGORY_PRODUCTS_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produits {{ category.name }} - 2MK Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    ''' + BASE_STYLE + '''
+</head>
+<body>
+    <header class="header" style="background: linear-gradient(135deg, {{ category.color }} 0%, {{ category.color }}dd 100%);">
+        <h1>{{ category.icon }} {{ category.name }}</h1>
+        <div class="header-actions">
+            <a href="/">🏠 Dashboard</a>
+            <a href="/category/{{ category.slug }}">📊 Vue d'ensemble</a>
+            <a href="/category/{{ category.slug }}/orders">📋 Commandes</a>
+            <a href="/category/{{ category.slug }}/products" class="active">📦 Produits</a>
+            <a href="/category/{{ category.slug }}/product/new" class="add-btn">+ Produit</a>
+            <a href="/logout" class="logout-btn">Déconnexion</a>
+        </div>
+    </header>
+    <div class="container">
+        {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+        
+        <div class="breadcrumb">
+            <a href="/">🏠 Dashboard</a><span>›</span>
+            <a href="/category/{{ category.slug }}">{{ category.name }}</a><span>›</span>
+            <span>Produits</span>
+        </div>
+        
+        {% if products %}
+        <div class="products-grid">
+            {% for product in products %}
+            <div class="product-card {% if not product.is_active %}inactive{% endif %}">
+                <h4>{{ product.name }}</h4>
+                <div class="code">{{ product.code }}</div>
+                {% if product.description %}<p style="font-size: 12px; color: #666; margin-bottom: 10px;">{{ product.description[:60] }}...</p>{% endif %}
+                <div class="price">{{ "{:,}".format(product.price).replace(",", " ") }} F</div>
+                <div class="stock-info">
+                    <span>Stock:</span>
+                    <span class="{% if product.stock_quantity == 0 %}stock-out{% elif product.stock_quantity <= product.alert_threshold %}stock-low{% else %}stock-ok{% endif %}">
+                        {{ product.available_stock }} unités
+                    </span>
+                </div>
+                {% if not product.is_active %}<span class="badge danger" style="margin-top: 10px;">Inactif</span>{% endif %}
+                <div class="actions" style="margin-top: 15px;">
+                    <a href="/category/{{ category.slug }}/product/{{ product.id }}/edit" class="btn btn-sm btn-edit">✏️ Modifier</a>
+                    <a href="/category/{{ category.slug }}/product/{{ product.id }}/delete" class="btn btn-sm btn-delete" onclick="return confirm('Supprimer ?')">🗑</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">
+            <div class="empty-icon">📦</div>
+            <p>Aucun produit dans cette catégorie</p>
+            <a href="/category/{{ category.slug }}/product/new" class="btn btn-success" style="margin-top: 20px;">+ Ajouter un produit</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
+'''
+
+# ==================== CATEGORY FORM ====================
+CATEGORY_FORM_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ "Modifier" if category else "Nouvelle" }} catégorie - 2MK Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    ''' + BASE_STYLE + '''
+</head>
+<body>
+    <header class="header">
+        <h1>{{ "✏️ Modifier" if category else "➕ Nouvelle" }} ligne de produits</h1>
+        <div class="header-actions"><a href="/">← Retour au dashboard</a></div>
+    </header>
+    <div class="container">
+        {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+        <div class="form-container">
+            <form method="POST">
+                <h3 class="form-title">📦 Informations de la ligne de produits</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nom *</label>
+                        <input type="text" name="name" value="{{ category.name if category else '' }}" required placeholder="Ex: Guindima, Gripper">
+                    </div>
+                    <div class="form-group">
+                        <label>Icône (emoji)</label>
+                        <input type="text" name="icon" value="{{ category.icon if category else '📦' }}" placeholder="📦" maxlength="5">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" rows="2" placeholder="Description courte...">{{ category.description if category else '' }}</textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Couleur (hex)</label>
+                        <input type="color" name="color" value="{{ category.color if category else '#1a2744' }}" style="height: 50px; padding: 5px;">
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" name="is_active" {% if not category or category.is_active %}checked{% endif %}> Catégorie active
+                        </label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">{{ "Modifier" if category else "Créer" }}</button>
+                    <a href="/" class="btn-cancel">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+'''
+
+# ==================== PRODUCT FORM ====================
+PRODUCT_FORM_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ "Modifier" if product else "Nouveau" }} produit - 2MK Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    ''' + BASE_STYLE + '''
+</head>
+<body>
+    <header class="header" style="background: linear-gradient(135deg, {{ category.color }} 0%, {{ category.color }}dd 100%);">
+        <h1>{{ "✏️ Modifier" if product else "➕ Nouveau" }} produit</h1>
+        <div class="header-actions"><a href="/category/{{ category.slug }}/products">← Retour aux produits</a></div>
+    </header>
+    <div class="container">
+        {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+        <div class="form-container">
+            <form method="POST">
+                <h3 class="form-title">📦 Produit {{ category.name }}</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Code produit *</label>
+                        <input type="text" name="code" value="{{ product.code if product else '' }}" required placeholder="Ex: GRIP-01">
+                    </div>
+                    <div class="form-group">
+                        <label>Prix (F CFA) *</label>
+                        <input type="number" name="price" value="{{ product.price if product else '' }}" required min="0" placeholder="Ex: 5000">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Nom du produit *</label>
+                    <input type="text" name="name" value="{{ product.name if product else '' }}" required placeholder="Ex: Power Wrist Gripper">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" rows="3" placeholder="Description du produit...">{{ product.description if product else '' }}</textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stock initial</label>
+                        <input type="number" name="stock_quantity" value="{{ product.stock_quantity if product else 0 }}" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Seuil d'alerte</label>
+                        <input type="number" name="alert_threshold" value="{{ product.alert_threshold if product else 5 }}" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" name="is_active" {% if not product or product.is_active %}checked{% endif %}> Produit actif
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">{{ "Modifier" if product else "Créer" }}</button>
+                    <a href="/category/{{ category.slug }}/products" class="btn-cancel">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+'''
+
+# ==================== ORDER FORM ====================
+ORDER_FORM_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ "Modifier" if order else "Nouvelle" }} commande - 2MK Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    ''' + BASE_STYLE + '''
+</head>
+<body>
+    <header class="header" style="background: linear-gradient(135deg, {{ category.color }} 0%, {{ category.color }}dd 100%);">
+        <h1>{{ "✏️ Modifier" if order else "➕ Nouvelle" }} commande {{ category.name }}</h1>
+        <div class="header-actions"><a href="/category/{{ category.slug }}/orders">← Retour aux commandes</a></div>
+    </header>
+    <div class="container">
+        {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+        <div class="form-container">
+            <form method="POST">
+                <h3 class="form-title">👤 Client</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nom complet *</label>
+                        <input type="text" name="client_name" value="{{ order.client.name if order else '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Téléphone *</label>
+                        <input type="text" name="client_phone" value="{{ order.client.phone if order else '' }}" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Adresse</label>
+                    <textarea name="client_address" rows="2">{{ order.client.address if order else '' }}</textarea>
+                </div>
+                
+                <h3 class="form-title" style="margin-top: 30px;">📦 Produits {{ category.name }}</h3>
+                <div id="products-container">
+                    {% if order and order.order_items %}
+                        {% for item in order.order_items %}
+                        <div class="product-item">
+                            <div class="product-row">
+                                <select name="product_id[]" required>
+                                    <option value="">-- Choisir --</option>
+                                    {% for p in products %}
+                                    <option value="{{ p.id }}" {% if p.id == item.product_id %}selected{% endif %}>{{ p.name }} - {{ "{:,}".format(p.price).replace(",", " ") }} F</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="variant[]" placeholder="Variante" value="{{ item.variant or '' }}">
+                                <input type="number" name="quantity[]" min="1" value="{{ item.quantity }}" style="width: 80px;">
+                                <button type="button" class="remove-product" onclick="removeProduct(this)">✕</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="product-item">
+                        <div class="product-row">
+                            <select name="product_id[]" required>
+                                <option value="">-- Choisir un produit --</option>
+                                {% for p in products %}
+                                <option value="{{ p.id }}">{{ p.name }} - {{ "{:,}".format(p.price).replace(",", " ") }} F</option>
+                                {% endfor %}
+                            </select>
+                            <input type="text" name="variant[]" placeholder="Variante/Couleur">
+                            <input type="number" name="quantity[]" min="1" value="1" style="width: 80px;">
+                            <button type="button" class="remove-product" onclick="removeProduct(this)">✕</button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <button type="button" class="add-product-btn" onclick="addProduct()">+ Ajouter un produit</button>
+                
+                <h3 class="form-title" style="margin-top: 30px;">📋 Statut</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Statut commande</label>
+                        <select name="status">
+                            <option value="pending" {% if order and order.status == 'pending' %}selected{% endif %}>⏳ En attente</option>
+                            <option value="confirmed" {% if order and order.status == 'confirmed' %}selected{% endif %}>✅ Confirmée</option>
+                            <option value="shipping" {% if order and order.status == 'shipping' %}selected{% endif %}>🚚 En livraison</option>
+                            <option value="delivered" {% if order and order.status == 'delivered' %}selected{% endif %}>📦 Livrée</option>
+                            <option value="cancelled" {% if order and order.status == 'cancelled' %}selected{% endif %}>❌ Annulée</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Statut paiement</label>
+                        <select name="payment_status">
+                            <option value="unpaid" {% if order and order.payment_status == 'unpaid' %}selected{% endif %}>❌ Non payé</option>
+                            <option value="deposit" {% if order and order.payment_status == 'deposit' %}selected{% endif %}>💰 Acompte</option>
+                            <option value="paid" {% if order and order.payment_status == 'paid' %}selected{% endif %}>✅ Payé</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">{{ "Modifier" if order else "Créer" }}</button>
+                    <a href="/category/{{ category.slug }}/orders" class="btn-cancel">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        const productsData = {{ products_json|safe }};
+        function addProduct() {
+            const container = document.getElementById('products-container');
+            let options = '<option value="">-- Choisir --</option>';
+            productsData.forEach(p => { options += `<option value="${p.id}">${p.name} - ${p.price.toLocaleString()} F</option>`; });
+            const item = document.createElement('div');
+            item.className = 'product-item';
+            item.innerHTML = `<div class="product-row"><select name="product_id[]" required>${options}</select><input type="text" name="variant[]" placeholder="Variante"><input type="number" name="quantity[]" min="1" value="1" style="width:80px;"><button type="button" class="remove-product" onclick="removeProduct(this)">✕</button></div>`;
+            container.appendChild(item);
+        }
+        function removeProduct(btn) { if (document.querySelectorAll('.product-item').length > 1) btn.closest('.product-item').remove(); }
+    </script>
+</body>
+</html>
+'''
+
+# ==================== ORDER VIEW ====================
+ORDER_VIEW_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commande #{{ order.id }} - 2MK Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    ''' + BASE_STYLE + '''
+</head>
+<body>
+    <header class="header" style="background: linear-gradient(135deg, {{ category.color }} 0%, {{ category.color }}dd 100%);">
+        <h1>📋 Commande #{{ order.id }}</h1>
+        <div class="header-actions">
+            <a href="/category/{{ category.slug }}/order/{{ order.id }}/edit" class="add-btn">✏️ Modifier</a>
+            <a href="/category/{{ category.slug }}/orders">← Retour</a>
+        </div>
+    </header>
+    <div class="container">
+        <div class="breadcrumb">
+            <a href="/">🏠 Dashboard</a><span>›</span>
+            <a href="/category/{{ category.slug }}">{{ category.name }}</a><span>›</span>
+            <a href="/category/{{ category.slug }}/orders">Commandes</a><span>›</span>
+            <span>#{{ order.id }}</span>
+        </div>
+        
+        <div class="order-detail">
+            <h3>👤 Client</h3>
+            <div class="detail-grid">
+                <div class="detail-item"><label>Nom</label><span>{{ order.client.name }}</span></div>
+                <div class="detail-item"><label>Téléphone</label><span>{{ order.client.phone }}</span></div>
+                <div class="detail-item"><label>Adresse</label><span>{{ order.client.address or 'Non renseignée' }}</span></div>
+            </div>
+        </div>
+        
+        <div class="order-detail">
+            <h3>📦 Produits</h3>
+            <table style="margin-top: 15px;">
+                <thead><tr><th>Produit</th><th>Variante</th><th>Qté</th><th>Prix unit.</th><th>Total</th></tr></thead>
+                <tbody>
+                    {% for item in order.order_items %}
+                    <tr>
+                        <td>{{ item.product_name }}</td>
+                        <td>{{ item.variant or '-' }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ "{:,}".format(item.unit_price).replace(",", " ") }} F</td>
+                        <td><strong>{{ "{:,}".format(item.quantity * item.unit_price).replace(",", " ") }} F</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr><td colspan="4" style="text-align: right; font-weight: 600;">TOTAL</td>
+                    <td style="font-size: 20px; color: #d4a853;"><strong>{{ "{:,}".format(order.total_amount).replace(",", " ") }} F</strong></td></tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <div class="order-detail">
+            <h3>📋 Statut</h3>
+            <div class="detail-grid">
+                <div class="detail-item"><label>Commande</label><span class="status {{ order.status }}">{{ order.status }}</span></div>
+                <div class="detail-item"><label>Paiement</label><span class="payment {{ order.payment_status }}">{{ order.payment_status }}</span></div>
+                <div class="detail-item"><label>Créée le</label><span>{{ order.created_at.strftime('%d/%m/%Y à %H:%M') }}</span></div>
+                <div class="detail-item"><label>Modifiée le</label><span>{{ order.updated_at.strftime('%d/%m/%Y à %H:%M') if order.updated_at else '-' }}</span></div>
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <a href="/category/{{ category.slug }}/order/{{ order.id }}/edit" class="btn-submit" style="text-decoration:none;text-align:center;">✏️ Modifier</a>
+            <a href="/category/{{ category.slug }}/order/{{ order.id }}/delete" class="btn-cancel" style="background:#ef4444;color:white;" onclick="return confirm('Supprimer ?')">🗑 Supprimer</a>
+        </div>
+    </div>
+</body>
+</html>
+'''
+
+# ==================== ROUTES ====================
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('logged_in'): return redirect(url_for('dashboard'))
+    error = None
+    if request.method == 'POST':
+        if request.form.get('username') == ADMIN_USERNAME and request.form.get('password') == ADMIN_PASSWORD:
+            session.clear()
+            session['logged_in'] = True
+            session.permanent = True
+            return redirect(url_for('dashboard'))
+        error = "Identifiants incorrects"
+    return render_template_string(LOGIN_HTML, error=error)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route('/')
+@login_required
+def dashboard():
+    message = request.args.get('message')
+    try:
+        categories = Category.query.filter_by(is_active=True).all()
+        for cat in categories:
+            cat.product_count = Product.query.filter_by(category_id=cat.id, is_active=True).count()
+            product_ids = [p.id for p in Product.query.filter_by(category_id=cat.id).all()]
+            if product_ids:
+                cat.order_count = db.session.query(Order).join(OrderItem).filter(OrderItem.product_id.in_(product_ids)).distinct().count()
+                cat.revenue = db.session.query(db.func.sum(Order.total_amount)).join(OrderItem).filter(OrderItem.product_id.in_(product_ids), Order.payment_status == 'paid').scalar() or 0
+            else:
+                cat.order_count = 0
+                cat.revenue = 0
+        
+        stats = {
+            'total_orders': Order.query.count(),
+            'total_revenue': db.session.query(db.func.sum(Order.total_amount)).filter(Order.payment_status == 'paid').scalar() or 0,
+            'total_categories': Category.query.filter_by(is_active=True).count(),
+            'total_products': Product.query.filter_by(is_active=True).count()
+        }
+        
+        recent_orders = Order.query.order_by(Order.created_at.desc()).limit(10).all()
+        for order in recent_orders:
+            if order.order_items:
+                product = Product.query.get(order.order_items[0].product_id)
+                if product:
+                    cat = Category.query.get(product.category_id)
+                    order.category_name = cat.name if cat else 'N/A'
+                else:
+                    order.category_name = 'N/A'
+            else:
+                order.category_name = 'N/A'
+    except Exception as e:
+        categories = []
+        stats = {'total_orders': 0, 'total_revenue': 0, 'total_categories': 0, 'total_products': 0}
+        recent_orders = []
+    
+    return render_template_string(DASHBOARD_HTML, categories=categories, stats=stats, recent_orders=recent_orders, message=message)
+
+# ==================== CATEGORY ROUTES ====================
+@app.route('/category/new', methods=['GET', 'POST'])
+@login_required
+def new_category():
+    if request.method == 'POST':
+        try:
+            name = request.form['name'].strip()
+            slug = name.lower().replace(' ', '-').replace("'", '')
+            category = Category(
+                name=name,
+                slug=slug,
+                description=request.form.get('description', '').strip(),
+                icon=request.form.get('icon', '📦').strip() or '📦',
+                color=request.form.get('color', '#1a2744'),
+                is_active='is_active' in request.form
+            )
+            db.session.add(category)
+            db.session.commit()
+            return redirect(url_for('dashboard', message=f'Catégorie "{name}" créée!'))
+        except Exception as e:
+            db.session.rollback()
+            return render_template_string(CATEGORY_FORM_HTML, category=None, error=str(e))
+    return render_template_string(CATEGORY_FORM_HTML, category=None, error=None)
+
+@app.route('/category/<slug>')
+@login_required
+def category_page(slug):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    message = request.args.get('message')
+    products = Product.query.filter_by(category_id=category.id).order_by(Product.name).all()
+    for p in products:
+        p.available_stock = get_available_stock(p)
+    product_ids = [p.id for p in products]
+    
+    if product_ids:
+        orders = Order.query.join(OrderItem).filter(OrderItem.product_id.in_(product_ids)).distinct().order_by(Order.created_at.desc()).all()
+        stats = {
+            'total_orders': len(orders),
+            'pending_orders': sum(1 for o in orders if o.status in ['pending', 'confirmed']),
+            'delivered_orders': sum(1 for o in orders if o.status == 'delivered'),
+            'revenue': sum(o.total_amount for o in orders if o.payment_status == 'paid'),
+            'total_products': len(products)
+        }
+    else:
+        orders = []
+        stats = {'total_orders': 0, 'pending_orders': 0, 'delivered_orders': 0, 'revenue': 0, 'total_products': 0}
+    
+    return render_template_string(CATEGORY_PAGE_HTML, category=category, products=products, orders=orders, stats=stats, message=message)
+
+@app.route('/category/<slug>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_category(slug):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    if request.method == 'POST':
+        try:
+            category.name = request.form['name'].strip()
+            category.slug = category.name.lower().replace(' ', '-').replace("'", '')
+            category.description = request.form.get('description', '').strip()
+            category.icon = request.form.get('icon', '📦').strip() or '📦'
+            category.color = request.form.get('color', '#1a2744')
+            category.is_active = 'is_active' in request.form
+            db.session.commit()
+            return redirect(url_for('category_page', slug=category.slug, message='Catégorie modifiée!'))
+        except Exception as e:
+            db.session.rollback()
+            return render_template_string(CATEGORY_FORM_HTML, category=category, error=str(e))
+    return render_template_string(CATEGORY_FORM_HTML, category=category, error=None)
+
+@app.route('/category/<slug>/orders')
+@login_required
+def category_orders(slug):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    message = request.args.get('message')
+    filter_type = request.args.get('filter', 'all')
+    
+    products = Product.query.filter_by(category_id=category.id).all()
+    product_ids = [p.id for p in products]
+    
+    if product_ids:
+        query = Order.query.join(OrderItem).filter(OrderItem.product_id.in_(product_ids)).distinct()
+        if filter_type == 'pending': query = query.filter(Order.status == 'pending')
+        elif filter_type == 'confirmed': query = query.filter(Order.status == 'confirmed')
+        elif filter_type == 'shipping': query = query.filter(Order.status == 'shipping')
+        elif filter_type == 'delivered': query = query.filter(Order.status == 'delivered')
+        elif filter_type == 'unpaid': query = query.filter(Order.payment_status == 'unpaid')
+        elif filter_type == 'paid': query = query.filter(Order.payment_status == 'paid')
+        orders = query.order_by(Order.created_at.desc()).all()
+    else:
+        orders = []
+    
+    return render_template_string(CATEGORY_ORDERS_HTML, category=category, orders=orders, filter_type=filter_type, message=message)
+
+@app.route('/category/<slug>/products')
+@login_required
+def category_products(slug):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    message = request.args.get('message')
+    products = Product.query.filter_by(category_id=category.id).order_by(Product.name).all()
+    for p in products:
+        p.available_stock = get_available_stock(p)
+    return render_template_string(CATEGORY_PRODUCTS_HTML, category=category, products=products, message=message)
+
+# ==================== PRODUCT ROUTES ====================
+@app.route('/category/<slug>/product/new', methods=['GET', 'POST'])
+@login_required
+def new_product(slug):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    if request.method == 'POST':
+        try:
+            product = Product(
+                code=request.form['code'].upper().strip(),
+                name=request.form['name'].strip(),
+                description=request.form.get('description', '').strip(),
+                price=int(request.form['price']),
+                category_id=category.id,
+                category=category.name,
+                stock_quantity=int(request.form.get('stock_quantity', 0)),
+                alert_threshold=int(request.form.get('alert_threshold', 5)),
+                is_active='is_active' in request.form
+            )
+            db.session.add(product)
+            db.session.commit()
+            return redirect(url_for('category_products', slug=slug, message=f'Produit "{product.name}" créé!'))
+        except Exception as e:
+            db.session.rollback()
+            return render_template_string(PRODUCT_FORM_HTML, category=category, product=None, error=str(e))
+    return render_template_string(PRODUCT_FORM_HTML, category=category, product=None, error=None)
+
+@app.route('/category/<slug>/product/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_product(slug, id):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    product = Product.query.get_or_404(id)
+    if request.method == 'POST':
+        try:
+            product.code = request.form['code'].upper().strip()
+            product.name = request.form['name'].strip()
+            product.description = request.form.get('description', '').strip()
+            product.price = int(request.form['price'])
+            product.stock_quantity = int(request.form.get('stock_quantity', 0))
+            product.alert_threshold = int(request.form.get('alert_threshold', 5))
+            product.is_active = 'is_active' in request.form
+            db.session.commit()
+            return redirect(url_for('category_products', slug=slug, message=f'Produit "{product.name}" modifié!'))
+        except Exception as e:
+            db.session.rollback()
+            return render_template_string(PRODUCT_FORM_HTML, category=category, product=product, error=str(e))
+    return render_template_string(PRODUCT_FORM_HTML, category=category, product=product, error=None)
+
+@app.route('/category/<slug>/product/<int:id>/delete')
+@login_required
+def delete_product(slug, id):
+    product = Product.query.get_or_404(id)
+    name = product.name
+    try:
+        db.session.delete(product)
+        db.session.commit()
+        return redirect(url_for('category_products', slug=slug, message=f'Produit "{name}" supprimé!'))
+    except:
+        db.session.rollback()
+    return redirect(url_for('category_products', slug=slug))
+
+# ==================== ORDER ROUTES ====================
+@app.route('/category/<slug>/order/new', methods=['GET', 'POST'])
+@login_required
+def new_order(slug):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    products = Product.query.filter_by(category_id=category.id, is_active=True).order_by(Product.name).all()
+    products_json = json.dumps([{'id': p.id, 'name': p.name, 'price': p.price} for p in products])
+    
+    if request.method == 'POST':
+        try:
+            client = Client.query.filter_by(phone=request.form['client_phone']).first()
+            if not client:
+                client = Client(name=request.form['client_name'], phone=request.form['client_phone'], address=request.form.get('client_address', ''))
+                db.session.add(client)
+                db.session.flush()
+            else:
+                client.name = request.form['client_name']
+                client.address = request.form.get('client_address', '')
+            
+            order = Order(client_id=client.id, status=request.form.get('status', 'pending'), payment_status=request.form.get('payment_status', 'unpaid'))
+            db.session.add(order)
+            db.session.flush()
+            
+            total = 0
+            for i, pid in enumerate(request.form.getlist('product_id[]')):
+                if pid:
+                    product = Product.query.get(int(pid))
+                    if product:
+                        qty = int(request.form.getlist('quantity[]')[i] or 1)
+                        variant = request.form.getlist('variant[]')[i] if i < len(request.form.getlist('variant[]')) else ''
+                        item = OrderItem(order_id=order.id, product_id=product.id, product_code=product.code, product_name=product.name, variant=variant, quantity=qty, unit_price=product.price)
+                        db.session.add(item)
+                        total += product.price * qty
+            
+            order.total_amount = total
+
+            # Décrémenter le stock des composants
+            for item in order.order_items:
+                decrement_stock(item.product_code, item.quantity)
+
+            db.session.commit()
+            return redirect(url_for('category_orders', slug=slug, message=f'Commande #{order.id} créée!'))
+        except Exception as e:
+            db.session.rollback()
+            return render_template_string(ORDER_FORM_HTML, category=category, order=None, products=products, products_json=products_json, error=str(e))
+    
+    return render_template_string(ORDER_FORM_HTML, category=category, order=None, products=products, products_json=products_json, error=None)
+
+@app.route('/category/<slug>/order/<int:id>')
+@login_required
+def view_order(slug, id):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    order = Order.query.get_or_404(id)
+    return render_template_string(ORDER_VIEW_HTML, category=category, order=order)
+
+@app.route('/category/<slug>/order/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_order(slug, id):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    order = Order.query.get_or_404(id)
+    products = Product.query.filter_by(category_id=category.id, is_active=True).order_by(Product.name).all()
+    products_json = json.dumps([{'id': p.id, 'name': p.name, 'price': p.price} for p in products])
+    
+    if request.method == 'POST':
+        try:
+            order.client.name = request.form['client_name']
+            order.client.phone = request.form['client_phone']
+            order.client.address = request.form.get('client_address', '')
+            order.status = request.form.get('status', 'pending')
+            order.payment_status = request.form.get('payment_status', 'unpaid')
+            
+            OrderItem.query.filter_by(order_id=order.id).delete()
+            
+            total = 0
+            for i, pid in enumerate(request.form.getlist('product_id[]')):
+                if pid:
+                    product = Product.query.get(int(pid))
+                    if product:
+                        qty = int(request.form.getlist('quantity[]')[i] or 1)
+                        variant = request.form.getlist('variant[]')[i] if i < len(request.form.getlist('variant[]')) else ''
+                        item = OrderItem(order_id=order.id, product_id=product.id, product_code=product.code, product_name=product.name, variant=variant, quantity=qty, unit_price=product.price)
+                        db.session.add(item)
+                        total += product.price * qty
+            
+            order.total_amount = total
+            order.updated_at = datetime.utcnow()
+            db.session.commit()
+            return redirect(url_for('category_orders', slug=slug, message=f'Commande #{order.id} modifiée!'))
+        except Exception as e:
+            db.session.rollback()
+            return render_template_string(ORDER_FORM_HTML, category=category, order=order, products=products, products_json=products_json, error=str(e))
+    
+    return render_template_string(ORDER_FORM_HTML, category=category, order=order, products=products, products_json=products_json, error=None)
+
+@app.route('/category/<slug>/order/<int:id>/delete')
+@login_required
+def delete_order(slug, id):
+    order = Order.query.get_or_404(id)
+    try:
+        # Restaurer le stock avant suppression
+        for item in order.order_items:
+            restore_stock(item.product_code, item.quantity)
+        db.session.delete(order)
+        db.session.commit()
+        return redirect(url_for('category_orders', slug=slug, message=f'Commande #{id} supprimée!'))
+    except:
+        db.session.rollback()
+    return redirect(url_for('category_orders', slug=slug))
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok'})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
+# ==================== TELEGRAM WEBHOOK ====================
+@app.route('/webhook', methods=['POST'])
+def telegram_webhook():
+    try:
+        from bot import process_update
+        update = request.get_json()
+        if update:
+            process_update(update)
+    except Exception as e:
+        print(f"Webhook error: {e}")
+    return jsonify({'ok': True})
+
+@app.route('/set-webhook')
+@login_required
+def setup_webhook():
+    from bot import set_webhook
+    webhook_url = "https://admin.2mkbusiness.org/webhook"
+    result = set_webhook(webhook_url)
+    return jsonify(result)

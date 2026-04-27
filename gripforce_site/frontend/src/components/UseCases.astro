@@ -1,0 +1,50 @@
+---
+import { USE_CASES } from '../config.js';
+---
+
+<section class="relative py-20 md:py-32">
+  <div class="container-edge">
+    <div class="grid md:grid-cols-12 gap-6 mb-12 md:mb-20 reveal">
+      <div class="md:col-span-5">
+        <div class="label-eyebrow mb-4">Pour qui ?</div>
+        <h2 class="h-display text-display-lg">
+          Pensé pour
+          <span class="italic font-normal">tous ceux</span><br />
+          qui utilisent
+          <span class="italic font-normal text-volt-500 dark:text-volt-400">leurs mains.</span>
+        </h2>
+      </div>
+      <div class="md:col-span-6 md:col-start-7 md:pt-10">
+        <p class="text-base md:text-lg text-ink-700 dark:text-ink-200 leading-relaxed">
+          Si tes mains travaillent fort, souffrent, fatiguent ou ont besoin de retrouver leur force — GripForce est fait pour toi.
+        </p>
+      </div>
+    </div>
+
+    <!-- Grid 2 x 3 -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-ink-200 dark:bg-ink-700 border border-ink-200 dark:border-ink-700 rounded-2xl overflow-hidden">
+      {USE_CASES.map((item, i) => (
+        <div
+          class="reveal bg-ink-50 dark:bg-ink-900 p-6 md:p-8 hover:bg-ink-100 dark:hover:bg-ink-800 transition-colors group relative"
+          style={`transition-delay: ${i * 80}ms;`}
+        >
+          <div class="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500 dark:text-ink-400 mb-4">
+            {String(i + 1).padStart(2, '0')}
+          </div>
+          <h3 class="font-display text-2xl md:text-3xl font-medium mb-2">
+            {item.title}
+          </h3>
+          <p class="text-sm text-ink-600 dark:text-ink-300 leading-relaxed">
+            {item.subtitle}
+          </p>
+          <!-- Decorative arrow -->
+          <div class="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M7 17L17 7M7 7h10v10" />
+            </svg>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

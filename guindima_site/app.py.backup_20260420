@@ -1,0 +1,995 @@
+from flask import Flask, render_template_string, send_from_directory
+import os
+
+app = Flask(__name__)
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
+
+SITE_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guindima - Localisez ce qui compte</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #fff; color: #1a2744; }
+        
+        .header {
+            background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%);
+            padding: 12px 20px;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-brand { color: white; font-weight: 600; font-size: 16px; text-decoration: none; }
+        .header-nav { display: flex; gap: 15px; align-items: center; }
+        .header-link { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; }
+        .header-link:hover { color: #d4a853; }
+        .header-cta {
+            background: #25D366;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .hero {
+            background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%);
+            padding: 90px 20px 50px;
+            text-align: center;
+            color: white;
+        }
+        .hero h1 { font-size: 28px; margin-bottom: 8px; font-weight: 700; }
+        .hero .tagline { color: #d4a853; font-size: 16px; margin-bottom: 20px; letter-spacing: 2px; }
+        .hero p { opacity: 0.9; max-width: 500px; margin: 0 auto 25px; font-size: 15px; line-height: 1.6; }
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #25D366;
+            color: white;
+            padding: 14px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            transition: transform 0.2s;
+        }
+        .hero-cta:hover { transform: scale(1.05); }
+        
+        .section { padding: 50px 20px; max-width: 1100px; margin: 0 auto; }
+        .section-title { text-align: center; font-size: 24px; margin-bottom: 8px; color: #1a2744; font-weight: 700; }
+        .section-subtitle { text-align: center; color: #666; margin-bottom: 35px; font-size: 14px; }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .product-card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 15px;
+            padding: 25px 20px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.08); }
+        .product-card.featured { border: 2px solid #d4a853; background: linear-gradient(to bottom, #fffbf0, #fff); }
+        .product-card .badge { 
+            background: #d4a853; 
+            color: #1a2744; 
+            padding: 3px 12px; 
+            border-radius: 10px; 
+            font-size: 11px; 
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .product-card img { width: 140px; height: 140px; object-fit: contain; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto; }
+        .product-card h3 { font-size: 18px; margin-bottom: 8px; color: #1a2744; }
+        .product-card .price { font-size: 26px; font-weight: 700; color: #d4a853; margin-bottom: 8px; }
+        .product-card .desc { font-size: 13px; color: #666; margin-bottom: 18px; line-height: 1.5; }
+        .product-card .order-btn {
+            display: inline-block;
+            background: #1a2744;
+            color: white;
+            padding: 11px 28px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .product-card .order-btn:hover { background: #25D366; }
+        
+        .carousel-section { background: #f8f9fa; padding: 50px 20px; overflow: hidden; }
+        .carousel-container { max-width: 1200px; margin: 0 auto; }
+        
+        .carousel-wrapper { overflow: hidden; position: relative; margin: 20px 0; }
+        .carousel-track {
+            display: flex;
+            animation: scroll 25s linear infinite;
+            width: max-content;
+        }
+        .carousel-track:hover { animation-play-state: paused; }
+        .carousel-track.fast { animation-duration: 15s; }
+        .carousel-track.slow { animation-duration: 35s; }
+        .carousel-track.tracker-track {
+            justify-content: center;
+            animation: none;
+            width: 100%;
+        }
+        .carousel-track.tracker-track .carousel-item { width: 180px; margin: 0 30px; }
+        .carousel-track.tracker-track .carousel-item img { width: 140px; height: 140px; }
+        
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        
+        .carousel-item {
+            flex-shrink: 0;
+            width: 140px;
+            margin: 0 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .carousel-item:hover { transform: scale(1.1); }
+        .carousel-item img {
+            width: 110px;
+            height: 110px;
+            object-fit: contain;
+            border-radius: 10px;
+            background: white;
+            padding: 5px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        .carousel-item p { font-size: 12px; color: #666; margin-top: 8px; font-weight: 500; }
+        
+        .carousel-label { text-align: center; margin: 30px 0 15px; }
+        .carousel-label h3 { font-size: 18px; color: #1a2744; margin-bottom: 5px; }
+        .carousel-label .price { color: #d4a853; font-weight: 600; }
+        
+        .features { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+            gap: 25px; 
+            margin-top: 35px; 
+        }
+        .feature { text-align: center; padding: 15px; }
+        .feature-icon {
+            width: 65px; height: 65px;
+            background: linear-gradient(135deg, #d4a853, #e8c47a);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 26px;
+        }
+        .feature h4 { margin-bottom: 8px; color: #1a2744; font-size: 15px; }
+        .feature p { font-size: 13px; color: #666; line-height: 1.5; }
+        
+        .usecases {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .usecase {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #1a2744;
+        }
+        
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+        .info-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .info-card-icon { font-size: 40px; margin-bottom: 15px; }
+        .info-card h4 { color: #1a2744; margin-bottom: 8px; }
+        .info-card p { font-size: 13px; color: #666; }
+        
+        .cta-section {
+            background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%);
+            padding: 50px 20px;
+            text-align: center;
+            color: white;
+        }
+        .cta-section h2 { font-size: 24px; margin-bottom: 12px; }
+        .cta-section p { margin-bottom: 22px; opacity: 0.9; font-size: 14px; }
+        .cta-whatsapp {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #25D366;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .footer {
+            background: #1a2744;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .footer p { opacity: 0.8; font-size: 13px; margin-bottom: 6px; }
+        .footer .brand { font-size: 18px; font-weight: 600; color: #d4a853; margin-bottom: 15px; }
+        .footer-links { margin: 15px 0; }
+        .footer-links a { color: rgba(255,255,255,0.7); text-decoration: none; margin: 0 10px; font-size: 13px; }
+        .footer-links a:hover { color: #d4a853; }
+        
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .social-link {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .social-link:hover { background: #d4a853; transform: scale(1.1); }
+        .social-link svg { width: 22px; height: 22px; fill: white; }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+            z-index: 10;
+        }
+        .modal-header { padding: 25px; text-align: center; border-bottom: 1px solid #eee; }
+        .modal-header h2 { font-size: 22px; color: #1a2744; margin-bottom: 5px; }
+        .modal-header .price { font-size: 28px; color: #d4a853; font-weight: 700; }
+        .modal-body { padding: 25px; }
+        .variant-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .variant-item {
+            text-align: center;
+            padding: 10px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .variant-item:hover { border-color: #d4a853; }
+        .variant-item.selected { border-color: #d4a853; background: #fffbf0; }
+        .variant-item img { width: 70px; height: 70px; object-fit: contain; margin-bottom: 8px; }
+        .variant-item p { font-size: 11px; color: #666; }
+        .modal-footer { padding: 20px 25px; border-top: 1px solid #eee; text-align: center; }
+        .modal-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #25D366;
+            color: white;
+            padding: 14px 35px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+        }
+        
+        @media (max-width: 600px) {
+            .hero { padding: 80px 15px 40px; }
+            .hero h1 { font-size: 24px; }
+            .section-title { font-size: 20px; }
+            .carousel-item { width: 120px; }
+            .carousel-item img { width: 90px; height: 90px; }
+            .carousel-track.tracker-track .carousel-item { width: 140px; margin: 0 15px; }
+            .carousel-track.tracker-track .carousel-item img { width: 100px; height: 100px; }
+            .header-nav { display: none; }
+            .social-link { width: 40px; height: 40px; }
+            .social-link svg { width: 18px; height: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/" class="header-brand">📍 GUINDIMA</a>
+        <nav class="header-nav">
+            <a href="/guide" class="header-link">📖 Guide</a>
+            <a href="/contenu" class="header-link">📦 Contenu</a>
+            <a href="https://wa.me/221767593281?text=Bonjour%2C%20je%20suis%20intéressé%20par%20Guindima" class="header-cta">💬 Commander</a>
+        </nav>
+    </header>
+    
+    <section class="hero">
+        <h1>GUINDIMA</h1>
+        <p class="tagline">LOCALISEZ CE QUI COMPTE</p>
+        <p>Traceur GPS compact et discret. Pour vos enfants, véhicules, bagages, clés... Gardez un œil sur ce qui compte, où que vous soyez.</p>
+        <a href="https://wa.me/221767593281?text=Bonjour%2C%20je%20suis%20intéressé%20par%20Guindima" class="hero-cta">📱 Commander sur WhatsApp</a>
+    </section>
+    
+    <section class="section">
+        <h2 class="section-title">Nos Offres</h2>
+        <p class="section-subtitle">Cliquez pour voir les détails et variantes</p>
+        
+        <div class="products-grid">
+            <div class="product-card" onclick="openModal('tracker')">
+                <img src="/static/images/tracker_noir.png" alt="Tracker GPS">
+                <h3>🔌 Tracker Seul</h3>
+                <div class="price">9 000 F</div>
+                <p class="desc">Traceur GPS compact<br>Compatible Android & iOS</p>
+                <span class="order-btn">Voir détails</span>
+            </div>
+            
+            <div class="product-card featured" onclick="openModal('kit_saytu')">
+                <span class="badge">⭐ POPULAIRE</span>
+                <img src="/static/images/silicon_watchs.png" alt="Kit Saytu">
+                <h3>🦄 Kit Saytu</h3>
+                <div class="price">11 500 F</div>
+                <p class="desc">Tracker + Bracelet Silicone<br>15 motifs fun pour enfants</p>
+                <span class="order-btn">Voir les motifs</span>
+            </div>
+            
+            <div class="product-card" onclick="openModal('kit_guestu')">
+                <img src="/static/images/Nylons_bracelet.png" alt="Kit Guestu">
+                <h3>🎨 Kit Guëstu</h3>
+                <div class="price">12 500 F</div>
+                <p class="desc">Tracker + Bracelet Nylon<br>8 couleurs tendance</p>
+                <span class="order-btn">Voir les couleurs</span>
+            </div>
+        </div>
+    </section>
+    
+    <section class="carousel-section">
+        <div class="carousel-container">
+            <h2 class="section-title">Découvrez nos produits</h2>
+            <p class="section-subtitle">Cliquez sur un produit pour commander</p>
+            
+            <div class="carousel-label">
+                <h3>🔌 Trackers GPS</h3>
+                <span class="price">9 000 F</span>
+            </div>
+            <div class="carousel-wrapper">
+                <div class="carousel-track tracker-track" id="tracker-carousel"></div>
+            </div>
+            
+            <div class="carousel-label">
+                <h3>🦄 Kit Saytu (Tracker + Silicone)</h3>
+                <span class="price">11 500 F</span>
+            </div>
+            <div class="carousel-wrapper">
+                <div class="carousel-track" id="silicone-carousel"></div>
+            </div>
+            
+            <div class="carousel-label">
+                <h3>🎨 Kit Guëstu (Tracker + Nylon)</h3>
+                <span class="price">12 500 F</span>
+            </div>
+            <div class="carousel-wrapper">
+                <div class="carousel-track fast" id="nylon-carousel"></div>
+            </div>
+            
+            <div class="carousel-label" style="margin-top: 50px;">
+                <h3>🛒 Bracelets seuls (sans tracker)</h3>
+            </div>
+            
+            <div class="carousel-label" style="margin-top: 20px;">
+                <h3>Silicone</h3>
+                <span class="price">2 500 F l'unité</span>
+            </div>
+            <div class="carousel-wrapper">
+                <div class="carousel-track slow" id="silicone-solo-carousel"></div>
+            </div>
+            
+            <div class="carousel-label">
+                <h3>Nylon</h3>
+                <span class="price">3 500 F l'unité</span>
+            </div>
+            <div class="carousel-wrapper">
+                <div class="carousel-track fast" id="nylon-solo-carousel"></div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="section">
+        <h2 class="section-title">Pourquoi Guindima ?</h2>
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">📍</div>
+                <h4>Localisation GPS</h4>
+                <p>Suivez en temps réel sur votre téléphone</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <h4>Android & iOS</h4>
+                <p>Google Find My Device & Apple Find My</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔋</div>
+                <h4>1 à 2 ans d'autonomie</h4>
+                <p>Batterie CR2032 facilement remplaçable</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🚚</div>
+                <h4>Livraison Sénégal</h4>
+                <p>Livraison rapide à Dakar et partout au Sénégal</p>
+            </div>
+        </div>
+        
+        <h3 style="text-align: center; margin-top: 40px; color: #1a2744;">Utilisations multiples</h3>
+        <div class="usecases">
+            <span class="usecase">👶 Enfants</span>
+            <span class="usecase">🚗 Véhicules</span>
+            <span class="usecase">🧳 Bagages</span>
+            <span class="usecase">🔑 Clés</span>
+            <span class="usecase">🎒 Sacs</span>
+            <span class="usecase">🐕 Animaux</span>
+            <span class="usecase">👴 Personnes âgées</span>
+        </div>
+        
+        <div class="info-cards">
+            <a href="/guide" class="info-card">
+                <div class="info-card-icon">📖</div>
+                <h4>Guide d'utilisation</h4>
+                <p>Comment démarrer, connecter et localiser avec votre tracker</p>
+            </a>
+            <a href="/contenu" class="info-card">
+                <div class="info-card-icon">📦</div>
+                <h4>Contenu du kit</h4>
+                <p>Découvrez tout ce qui est inclus dans votre boîtier</p>
+            </a>
+        </div>
+    </section>
+    
+    <section class="cta-section">
+        <h2>Prêt à protéger ce qui compte ?</h2>
+        <p>Commandez maintenant et recevez votre Guindima rapidement au Sénégal</p>
+        <a href="https://wa.me/221767593281?text=Bonjour%2C%20je%20suis%20intéressé%20par%20Guindima" class="cta-whatsapp">📱 Écrire sur WhatsApp</a>
+    </section>
+    
+    <footer class="footer">
+        <p class="brand">GUINDIMA</p>
+        <p>par 2MK Business</p>
+        
+        <div class="social-links">
+            <!-- TikTok -->
+            <a href="https://www.tiktok.com/@2mk_business" target="_blank" class="social-link" title="TikTok">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                </svg>
+            </a>
+            <!-- Instagram -->
+            <a href="https://www.instagram.com/2mk_business" target="_blank" class="social-link" title="Instagram">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+            </a>
+            <!-- Facebook -->
+            <a href="https://www.facebook.com/share/18SdwhVNbi/" target="_blank" class="social-link" title="Facebook">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+            </a>
+            <!-- X (Twitter) -->
+            <a href="https://x.com/2mkbusiness" target="_blank" class="social-link" title="X (Twitter)">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+            </a>
+            <!-- WhatsApp -->
+            <a href="https://wa.me/221767593281" target="_blank" class="social-link" title="WhatsApp">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+            </a>
+        </div>
+        
+        <div class="footer-links">
+            <a href="/guide">Guide d'utilisation</a>
+            <a href="/contenu">Contenu du kit</a>
+        </div>
+        <p>📍 Dakar, Sénégal • 📞 +221 76 759 32 81</p>
+        <p style="margin-top: 15px; opacity: 0.5;">© 2026 Guindima par 2MK Business</p>
+    </footer>
+    
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div class="modal-header">
+                <h2 id="modal-title">Titre</h2>
+                <div class="price" id="modal-price">Prix</div>
+            </div>
+            <div class="modal-body">
+                <p style="text-align: center; margin-bottom: 20px; color: #666;" id="modal-desc">Description</p>
+                <div class="variant-grid" id="variant-grid"></div>
+            </div>
+            <div class="modal-footer">
+                <a id="modal-cta" href="#" class="modal-cta" target="_blank">📱 Commander sur WhatsApp</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const products = {
+            tracker: {
+                title: "🔌 Tracker GPS",
+                price: "9 000 F",
+                desc: "Traceur GPS compatible Android (Google Find My Device) et iOS (Apple Find My). Autonomie de 1 à 2 ans, batterie CR2032 facilement remplaçable.",
+                variants: [
+                    { name: "Blanc", img: "/static/images/tracker_blanc.png" },
+                    { name: "Noir", img: "/static/images/tracker_noir.png" }
+                ]
+            },
+            kit_saytu: {
+                title: "🦄 Kit Saytu",
+                price: "11 500 F",
+                desc: "Tracker GPS + Bracelet Silicone. Parfait pour les enfants ! Choisissez votre motif :",
+                variants: [
+                    { name: "Vert Nuage", img: "/static/images/silicone/vert_nuage.png" },
+                    { name: "Rose Arc-en-ciel", img: "/static/images/silicone/rose_arc.png" },
+                    { name: "Noir Fleur", img: "/static/images/silicone/noir_fleur.png" },
+                    { name: "Rouge Donut", img: "/static/images/silicone/rouge_donut.png" },
+                    { name: "Vert Glace", img: "/static/images/silicone/vert_glace.png" },
+                    { name: "Rose Baleine", img: "/static/images/silicone/rose_baleine.png" },
+                    { name: "Mauve Licorne", img: "/static/images/silicone/mauve_licorne.png" },
+                    { name: "Jaune Donut", img: "/static/images/silicone/jaune_donut.png" },
+                    { name: "Vert Bonbon", img: "/static/images/silicone/vert_bonbon.png" },
+                    { name: "Rose Licorne", img: "/static/images/silicone/rose_licorne.png" },
+                    { name: "Bleu Saturne", img: "/static/images/silicone/bleu_saturne.png" },
+                    { name: "Blanc Glace", img: "/static/images/silicone/blanc_glace.png" },
+                    { name: "Bleu Dino", img: "/static/images/silicone/bleu_dino.png" },
+                    { name: "Vert Dino", img: "/static/images/silicone/vert_dino.png" },
+                    { name: "Beige Licorne", img: "/static/images/silicone/beige_licorne.png" }
+                ]
+            },
+            kit_guestu: {
+                title: "🎨 Kit Guëstu",
+                price: "12 500 F",
+                desc: "Tracker GPS + Bracelet Nylon. Élégant et confortable ! Choisissez votre couleur :",
+                variants: [
+                    { name: "Rouge", img: "/static/images/nylon/rouge.png" },
+                    { name: "Rainbow", img: "/static/images/nylon/rainbow.png" },
+                    { name: "Sept couleurs", img: "/static/images/nylon/sept_couleurs.png" },
+                    { name: "Jaune-Vert", img: "/static/images/nylon/jaune_vert.png" },
+                    { name: "Bleu", img: "/static/images/nylon/bleu.png" },
+                    { name: "Blanc", img: "/static/images/nylon/blanc.png" },
+                    { name: "Noir", img: "/static/images/nylon/noir.png" },
+                    { name: "Rose sable", img: "/static/images/nylon/rose_sable.png" }
+                ]
+            },
+            bracelet_silicone: {
+                title: "🦄 Bracelet Silicone seul",
+                price: "2 500 F",
+                desc: "Bracelet Silicone seul (sans tracker). Choisissez votre motif :",
+                variants: [
+                    { name: "Vert Nuage", img: "/static/images/silicone/vert_nuage.png" },
+                    { name: "Rose Arc-en-ciel", img: "/static/images/silicone/rose_arc.png" },
+                    { name: "Noir Fleur", img: "/static/images/silicone/noir_fleur.png" },
+                    { name: "Rouge Donut", img: "/static/images/silicone/rouge_donut.png" },
+                    { name: "Vert Glace", img: "/static/images/silicone/vert_glace.png" },
+                    { name: "Rose Baleine", img: "/static/images/silicone/rose_baleine.png" },
+                    { name: "Mauve Licorne", img: "/static/images/silicone/mauve_licorne.png" },
+                    { name: "Jaune Donut", img: "/static/images/silicone/jaune_donut.png" },
+                    { name: "Vert Bonbon", img: "/static/images/silicone/vert_bonbon.png" },
+                    { name: "Rose Licorne", img: "/static/images/silicone/rose_licorne.png" },
+                    { name: "Bleu Saturne", img: "/static/images/silicone/bleu_saturne.png" },
+                    { name: "Blanc Glace", img: "/static/images/silicone/blanc_glace.png" },
+                    { name: "Bleu Dino", img: "/static/images/silicone/bleu_dino.png" },
+                    { name: "Vert Dino", img: "/static/images/silicone/vert_dino.png" },
+                    { name: "Beige Licorne", img: "/static/images/silicone/beige_licorne.png" }
+                ]
+            },
+            bracelet_nylon: {
+                title: "🎨 Bracelet Nylon seul",
+                price: "3 500 F",
+                desc: "Bracelet Nylon seul (sans tracker). Choisissez votre couleur :",
+                variants: [
+                    { name: "Rouge", img: "/static/images/nylon/rouge.png" },
+                    { name: "Rainbow", img: "/static/images/nylon/rainbow.png" },
+                    { name: "Sept couleurs", img: "/static/images/nylon/sept_couleurs.png" },
+                    { name: "Jaune-Vert", img: "/static/images/nylon/jaune_vert.png" },
+                    { name: "Bleu", img: "/static/images/nylon/bleu.png" },
+                    { name: "Blanc", img: "/static/images/nylon/blanc.png" },
+                    { name: "Noir", img: "/static/images/nylon/noir.png" },
+                    { name: "Rose sable", img: "/static/images/nylon/rose_sable.png" }
+                ]
+            }
+        };
+        
+        let selectedVariant = null;
+        let currentProduct = null;
+        
+        function openModal(productType) {
+            const product = products[productType];
+            currentProduct = productType;
+            selectedVariant = null;
+            
+            document.getElementById('modal-title').textContent = product.title;
+            document.getElementById('modal-price').textContent = product.price;
+            document.getElementById('modal-desc').textContent = product.desc;
+            
+            const grid = document.getElementById('variant-grid');
+            grid.innerHTML = '';
+            
+            product.variants.forEach((variant, index) => {
+                const item = document.createElement('div');
+                item.className = 'variant-item';
+                item.onclick = () => selectVariant(index, variant.name);
+                item.innerHTML = `<img src="${variant.img}" alt="${variant.name}" onerror="this.src='/static/images/tracker_noir.png'"><p>${variant.name}</p>`;
+                grid.appendChild(item);
+            });
+            
+            updateCTA();
+            document.getElementById('modal-overlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function selectVariant(index, name) {
+            document.querySelectorAll('.variant-item').forEach((item, i) => {
+                item.classList.toggle('selected', i === index);
+            });
+            selectedVariant = name;
+            updateCTA();
+        }
+        
+        function updateCTA() {
+            const product = products[currentProduct];
+            let message = `Bonjour, je veux commander ${product.title} à ${product.price}`;
+            if (selectedVariant) message += ` - ${selectedVariant}`;
+            document.getElementById('modal-cta').href = `https://wa.me/221767593281?text=${encodeURIComponent(message)}`;
+        }
+        
+        function closeModal(event) {
+            if (event && event.target !== document.getElementById('modal-overlay')) return;
+            document.getElementById('modal-overlay').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        const trackerItems = [
+            { name: "Blanc", img: "/static/images/tracker_blanc.png", product: "tracker" },
+            { name: "Noir", img: "/static/images/tracker_noir.png", product: "tracker" }
+        ];
+        
+        const siliconeItems = [
+            { name: "Vert Nuage", img: "/static/images/silicone/vert_nuage.png", product: "kit_saytu" },
+            { name: "Rose Arc-en-ciel", img: "/static/images/silicone/rose_arc.png", product: "kit_saytu" },
+            { name: "Noir Fleur", img: "/static/images/silicone/noir_fleur.png", product: "kit_saytu" },
+            { name: "Rouge Donut", img: "/static/images/silicone/rouge_donut.png", product: "kit_saytu" },
+            { name: "Vert Glace", img: "/static/images/silicone/vert_glace.png", product: "kit_saytu" },
+            { name: "Rose Baleine", img: "/static/images/silicone/rose_baleine.png", product: "kit_saytu" },
+            { name: "Mauve Licorne", img: "/static/images/silicone/mauve_licorne.png", product: "kit_saytu" },
+            { name: "Jaune Donut", img: "/static/images/silicone/jaune_donut.png", product: "kit_saytu" },
+            { name: "Vert Bonbon", img: "/static/images/silicone/vert_bonbon.png", product: "kit_saytu" },
+            { name: "Rose Licorne", img: "/static/images/silicone/rose_licorne.png", product: "kit_saytu" },
+            { name: "Bleu Saturne", img: "/static/images/silicone/bleu_saturne.png", product: "kit_saytu" },
+            { name: "Blanc Glace", img: "/static/images/silicone/blanc_glace.png", product: "kit_saytu" },
+            { name: "Bleu Dino", img: "/static/images/silicone/bleu_dino.png", product: "kit_saytu" },
+            { name: "Vert Dino", img: "/static/images/silicone/vert_dino.png", product: "kit_saytu" },
+            { name: "Beige Licorne", img: "/static/images/silicone/beige_licorne.png", product: "kit_saytu" }
+        ];
+        
+        const nylonItems = [
+            { name: "Rouge", img: "/static/images/nylon/rouge.png", product: "kit_guestu" },
+            { name: "Rainbow", img: "/static/images/nylon/rainbow.png", product: "kit_guestu" },
+            { name: "Sept couleurs", img: "/static/images/nylon/sept_couleurs.png", product: "kit_guestu" },
+            { name: "Jaune-Vert", img: "/static/images/nylon/jaune_vert.png", product: "kit_guestu" },
+            { name: "Bleu", img: "/static/images/nylon/bleu.png", product: "kit_guestu" },
+            { name: "Blanc", img: "/static/images/nylon/blanc.png", product: "kit_guestu" },
+            { name: "Noir", img: "/static/images/nylon/noir.png", product: "kit_guestu" },
+            { name: "Rose sable", img: "/static/images/nylon/rose_sable.png", product: "kit_guestu" }
+        ];
+        
+        const siliconeSoloItems = siliconeItems.map(item => ({...item, product: "bracelet_silicone"}));
+        const nylonSoloItems = nylonItems.map(item => ({...item, product: "bracelet_nylon"}));
+        
+        function createCarousel(containerId, items, isStatic = false) {
+            const container = document.getElementById(containerId);
+            const allItems = isStatic ? items : [...items, ...items];
+            allItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'carousel-item';
+                div.onclick = () => openModal(item.product);
+                div.innerHTML = `<img src="${item.img}" alt="${item.name}" onerror="this.src='/static/images/tracker_noir.png'"><p>${item.name}</p>`;
+                container.appendChild(div);
+            });
+        }
+        
+        createCarousel('tracker-carousel', trackerItems, true);
+        createCarousel('silicone-carousel', siliconeItems);
+        createCarousel('nylon-carousel', nylonItems);
+        createCarousel('silicone-solo-carousel', siliconeSoloItems);
+        createCarousel('nylon-solo-carousel', nylonSoloItems);
+        
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+    </script>
+</body>
+</html>
+'''
+
+GUIDE_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide d'utilisation - Guindima</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #f8f9fa; color: #1a2744; }
+        .header { background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header a { color: white; text-decoration: none; font-weight: 600; }
+        .header .back { opacity: 0.8; font-size: 14px; }
+        .hero { background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); padding: 40px 20px; text-align: center; color: white; }
+        .hero h1 { font-size: 28px; margin-bottom: 10px; }
+        .hero p { opacity: 0.9; }
+        .content { max-width: 800px; margin: 0 auto; padding: 30px 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center; }
+        .tab { padding: 12px 24px; background: white; border: 2px solid #eee; border-radius: 25px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s; }
+        .tab:hover { border-color: #d4a853; }
+        .tab.active { background: #1a2744; color: white; border-color: #1a2744; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .step { background: white; border-radius: 15px; padding: 25px; margin-bottom: 20px; box-shadow: 0 3px 15px rgba(0,0,0,0.05); }
+        .step-number { background: linear-gradient(135deg, #d4a853, #e8c47a); color: #1a2744; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; margin-bottom: 15px; }
+        .step h3 { color: #1a2744; margin-bottom: 10px; font-size: 18px; }
+        .step p { color: #666; line-height: 1.7; font-size: 14px; }
+        .step ul { color: #666; margin-top: 10px; padding-left: 20px; }
+        .step li { margin-bottom: 8px; font-size: 14px; line-height: 1.6; }
+        .tip { background: #fffbf0; border-left: 4px solid #d4a853; padding: 15px; margin-top: 15px; border-radius: 0 10px 10px 0; }
+        .tip p { color: #92400e; font-size: 13px; }
+        .warning { background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin-top: 15px; border-radius: 0 10px 10px 0; }
+        .warning p { color: #b91c1c; font-size: 13px; }
+        .info { background: #e8f4fd; border-left: 4px solid #3b82f6; padding: 15px; margin-top: 15px; border-radius: 0 10px 10px 0; }
+        .info p { color: #1e40af; font-size: 13px; }
+        .cta-box { background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); border-radius: 15px; padding: 30px; text-align: center; color: white; margin-top: 30px; }
+        .cta-box h3 { margin-bottom: 15px; }
+        .cta-box a { display: inline-block; background: #25D366; color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; }
+        .footer { text-align: center; padding: 30px 20px; color: #666; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/" class="back">← Retour</a>
+        <span style="color: #d4a853; font-weight: 600;">GUINDIMA</span>
+    </header>
+    <section class="hero">
+        <h1>📖 Guide d'utilisation</h1>
+        <p>Configuration complète de votre tracker Guindima</p>
+    </section>
+    <div class="content">
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('ios')">🍎 iPhone</div>
+            <div class="tab" onclick="showTab('android')">🤖 Android</div>
+            <div class="tab" onclick="showTab('localiser')">📍 Localiser</div>
+            <div class="tab" onclick="showTab('perdu')">🔔 Mode Perdu</div>
+            <div class="tab" onclick="showTab('batterie')">🔋 Batterie</div>
+            <div class="tab" onclick="showTab('reset')">🔄 Reset</div>
+        </div>
+        <div class="tab-content active" id="tab-ios">
+            <div class="step"><div class="step-number">1</div><h3>🔌 Allumer le tracker</h3><p>Appuyez une fois sur le bouton du tracker. Un son de démarrage indique qu'il est allumé.</p><div class="tip"><p>💡 Pour éteindre : maintenez le bouton pendant 3 secondes. Vous entendrez 2 bips.</p></div></div>
+            <div class="step"><div class="step-number">2</div><h3>📱 Ouvrir l'app "Localiser" (Find My)</h3><p>Sur votre iPhone :</p><ul><li>Ouvrez l'application <strong>"Localiser"</strong> (Find My)</li><li>Appuyez sur le bouton <strong>"+"</strong> en haut</li><li>Sélectionnez <strong>"Ajouter un autre objet"</strong></li><li>Appuyez sur <strong>"Connecter"</strong></li><li>Suivez les instructions à l'écran pour finaliser</li></ul></div>
+            <div class="step"><div class="step-number">3</div><h3>✅ Configuration terminée !</h3><p>Votre tracker est maintenant connecté. Vous pouvez :</p><ul><li>Voir sa position sur la carte</li><li>Le faire sonner pour le retrouver</li><li>Activer les notifications si vous l'oubliez</li></ul><div class="info"><p>ℹ️ Assurez-vous d'avoir la dernière version d'iOS, iPadOS ou macOS pour une compatibilité optimale.</p></div></div>
+        </div>
+        <div class="tab-content" id="tab-android">
+            <div class="step"><div class="step-number">1</div><h3>🔌 Allumer le tracker</h3><p>Appuyez une fois sur le bouton. Un bip indique qu'il est allumé.</p></div>
+            <div class="step"><div class="step-number">2</div><h3>📱 Méthode rapide (Fast Pair)</h3><p>Si votre téléphone supporte Fast Pair :</p><ul><li>Activez le Bluetooth et la localisation</li><li>Allumez le tracker près du téléphone</li><li>Une notification pop-up apparaîtra automatiquement</li><li>Appuyez sur <strong>"Connecter"</strong> et suivez les instructions</li></ul><div class="tip"><p>💡 Si la notification n'apparaît pas, redémarrez votre téléphone et réessayez.</p></div></div>
+            <div class="step"><div class="step-number">3</div><h3>📱 Méthode manuelle</h3><p>Si la méthode rapide ne fonctionne pas :</p><ul><li>Ouvrez <strong>Paramètres</strong> → <strong>Google</strong> → <strong>Tous les services</strong></li><li>Dans <strong>"Appareils connectés et partage"</strong>, sélectionnez <strong>"Appareils"</strong></li><li>Activez <strong>"Rechercher les appareils à proximité"</strong></li><li>Le tracker apparaîtra dans la liste</li><li>Appuyez dessus et suivez les instructions</li></ul></div>
+            <div class="step"><div class="step-number">4</div><h3>🗺️ Utiliser Google Find Hub</h3><p>Une fois connecté, utilisez l'app <strong>"Google Find Hub"</strong> pour :</p><ul><li><strong>Localiser à proximité :</strong> Appuyez sur "Jouer un son" pour le faire biper</li><li><strong>Localiser à distance :</strong> Appuyez sur l'appareil pour voir sa position sur la carte</li><li><strong>Obtenir l'itinéraire :</strong> Appuyez sur "Obtenir l'itinéraire" pour naviguer vers sa position</li></ul></div>
+        </div>
+        <div class="tab-content" id="tab-localiser">
+            <div class="step"><div class="step-number">1</div><h3>📍 Localiser à proximité</h3><p>Si votre objet est près de vous :</p><ul><li>Ouvrez l'app <strong>"Localiser"</strong> (iOS) ou <strong>"Google Find Hub"</strong> (Android)</li><li>Sélectionnez l'onglet <strong>"Objets"</strong></li><li>Appuyez sur votre tracker dans la liste</li><li>Appuyez sur <strong>"Jouer un son"</strong></li><li>Suivez le son pour retrouver votre objet</li><li>Appuyez sur <strong>"Arrêter le son"</strong> une fois trouvé</li></ul></div>
+            <div class="step"><div class="step-number">2</div><h3>🗺️ Voir la dernière position connue</h3><p>Si votre objet est loin :</p><ul><li>Ouvrez l'app et sélectionnez votre tracker</li><li>La dernière position connue s'affiche sur la carte</li><li>L'icône que vous avez choisie lors de la configuration apparaît</li><li>Appuyez sur <strong>"Itinéraire"</strong> pour naviguer vers cette position</li></ul></div>
+            <div class="step"><div class="step-number">3</div><h3>🔔 Notifications d'oubli</h3><p>Pour être averti si vous oubliez votre objet :</p><ul><li>Sélectionnez votre tracker dans l'app</li><li>Allez dans <strong>"Notifications"</strong></li><li>Activez <strong>"Me prévenir si je laisse cet objet"</strong></li><li>Vous recevrez une alerte quand le tracker n'est plus à portée</li></ul><div class="tip"><p>💡 Activez aussi "Me prévenir si retrouvé" pour être notifié quand un autre appareil Find My détecte votre tracker.</p></div></div>
+        </div>
+        <div class="tab-content" id="tab-perdu">
+            <div class="step"><div class="step-number">1</div><h3>🚨 Activer le Mode Perdu</h3><p>Si vous avez perdu votre objet :</p><ul><li>Ouvrez l'app et sélectionnez votre tracker</li><li>Appuyez sur <strong>"Mode Perdu"</strong> puis <strong>"Activer"</strong></li><li>Appuyez sur <strong>"Continuer"</strong></li><li>Entrez votre numéro de téléphone ou email</li><li>Vous pouvez ajouter un message pour la personne qui trouvera l'objet</li><li>Appuyez sur <strong>"Activer"</strong></li></ul></div>
+            <div class="step"><div class="step-number">2</div><h3>📲 Ce qui se passe ensuite</h3><ul><li>Vous recevrez une notification dès que le tracker sera détecté par le réseau Find My</li><li>Le tracker est <strong>verrouillé</strong> et ne peut pas être associé à un autre appareil</li><li>"Me prévenir si retrouvé" est automatiquement activé</li></ul><div class="warning"><p>⚠️ En Mode Perdu, le tracker ne peut plus être associé à un nouvel appareil. Désactivez ce mode avant de le donner à quelqu'un d'autre.</p></div></div>
+            <div class="step"><div class="step-number">3</div><h3>🤝 Partager la localisation (Android)</h3><p>Pour permettre à quelqu'un d'autre de localiser votre tracker :</p><ul><li>Dans Google Find Hub, sélectionnez votre tracker</li><li>Appuyez sur <strong>"Partager l'appareil"</strong></li><li>L'autre personne pourra voir la position du tracker</li></ul></div>
+        </div>
+        <div class="tab-content" id="tab-batterie">
+            <div class="step"><div class="step-number">1</div><h3>🔋 Autonomie</h3><p>Le tracker utilise une pile <strong>CR2032</strong> standard :</p><ul><li>Autonomie : <strong>1 à 2 ans</strong> selon l'utilisation</li><li>Pile facilement disponible en supermarché ou pharmacie</li><li>Remplacement simple avec l'outil inclus</li></ul></div>
+            <div class="step"><div class="step-number">2</div><h3>🔧 Remplacer la pile</h3><p>Utilisez l'outil d'ouverture triangulaire inclus :</p><ul><li>Repérez l'encoche <strong>"OPEN"</strong> à l'arrière du tracker</li><li>Insérez l'outil d'ouverture et faites levier doucement</li><li>Retirez l'ancienne pile CR2032</li><li>Insérez la nouvelle pile avec le <strong>côté + visible</strong> (texte vers le haut)</li><li>Refermez le tracker en alignant les encoches des deux côtés</li><li>Si pas de son au démarrage, vérifiez que la pile est bien insérée</li></ul><div class="tip"><p>💡 Après le changement de pile, le tracker fonctionne directement sans reconnexion !</p></div></div>
+            <div class="step"><div class="step-number">3</div><h3>♻️ Recyclage</h3><ul><li>Ne jetez pas les piles usagées dans les ordures ménagères</li><li>Déposez-les dans les points de collecte appropriés</li><li>Gardez les piles hors de portée des enfants</li></ul></div>
+        </div>
+        <div class="tab-content" id="tab-reset">
+            <div class="step"><div class="step-number">1</div><h3>📱 Supprimer de l'app (iOS)</h3><p>Avant de réinitialiser :</p><ul><li>Ouvrez l'app <strong>"Localiser"</strong></li><li>Sélectionnez votre tracker dans la liste</li><li>Assurez-vous que le <strong>Mode Perdu est désactivé</strong></li><li>Faites défiler vers le bas et appuyez sur <strong>"Supprimer l'objet"</strong></li><li>Confirmez en appuyant sur <strong>"Supprimer"</strong></li></ul></div>
+            <div class="step"><div class="step-number">2</div><h3>📱 Supprimer de l'app (Android)</h3><ul><li>Ouvrez <strong>"Google Find Hub"</strong></li><li>Sélectionnez votre tracker</li><li>Appuyez sur le bouton <strong>Paramètres</strong></li><li>Appuyez sur <strong>"Supprimer de Find Hub"</strong> et confirmez</li></ul></div>
+            <div class="step"><div class="step-number">3</div><h3>🔄 Réinitialisation d'usine</h3><p>Après avoir supprimé de l'app :</p><ul><li>Allumez le tracker</li><li>Appuyez rapidement <strong>5 fois</strong> sur le bouton</li><li>À la 5ème pression, <strong>maintenez</strong> le bouton jusqu'au bip</li><li>Le tracker est maintenant réinitialisé</li><li>Il peut être associé à un nouvel appareil</li></ul><div class="warning"><p>⚠️ Supprimez toujours le tracker de l'app AVANT de le réinitialiser.</p></div></div>
+            <div class="step"><div class="step-number">4</div><h3>🔒 Détection de suivi indésirable</h3><p>Protection contre le tracking non autorisé :</p><ul><li>Si un iPhone détecte un tracker inconnu qui vous suit, vous recevrez une alerte</li><li>Le tracker émettra un son pour que vous puissiez le trouver</li><li>Cette alerte ne se déclenche que si le tracker n'est pas connecté au téléphone de son propriétaire</li><li>Le tracker de votre partenaire qui voyage avec vous ne déclenchera pas d'alerte</li></ul></div>
+        </div>
+        <div class="cta-box">
+            <h3>Besoin d'aide ?</h3>
+            <p style="opacity: 0.9; margin-bottom: 15px;">Contactez-nous sur WhatsApp pour une assistance personnalisée</p>
+            <a href="https://wa.me/221767593281?text=Bonjour%2C%20j'ai%20besoin%20d'aide%20pour%20mon%20tracker%20Guindima">💬 Demander de l'aide</a>
+        </div>
+    </div>
+    <footer class="footer"><p>© 2026 Guindima par 2MK Business</p></footer>
+    <script>
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
+'''
+
+CONTENU_HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contenu du kit - Guindima</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #f8f9fa; color: #1a2744; }
+        .header { background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header a { color: white; text-decoration: none; font-weight: 600; }
+        .header .back { opacity: 0.8; font-size: 14px; }
+        .hero { background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); padding: 40px 20px; text-align: center; color: white; }
+        .hero h1 { font-size: 28px; margin-bottom: 10px; }
+        .hero p { opacity: 0.9; }
+        .content { max-width: 800px; margin: 0 auto; padding: 30px 20px; }
+        .kit-section { background: white; border-radius: 15px; padding: 25px; margin-bottom: 25px; box-shadow: 0 3px 15px rgba(0,0,0,0.05); }
+        .kit-section h2 { color: #1a2744; font-size: 20px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+        .kit-section.featured { border: 2px solid #d4a853; }
+        .kit-section.featured h2 { color: #d4a853; }
+        .item-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
+        .item { text-align: center; padding: 20px 15px; background: #f8f9fa; border-radius: 12px; }
+        .item-icon { font-size: 36px; margin-bottom: 10px; }
+        .item h4 { color: #1a2744; margin-bottom: 5px; font-size: 14px; }
+        .item p { color: #666; font-size: 11px; line-height: 1.4; }
+        .note { background: #e8f4fd; border-left: 4px solid #3b82f6; padding: 15px; margin-top: 20px; border-radius: 0 10px 10px 0; }
+        .note p { color: #1e40af; font-size: 13px; }
+        .cta-box { background: linear-gradient(135deg, #1a2744 0%, #2d3a54 100%); border-radius: 15px; padding: 30px; text-align: center; color: white; margin-top: 30px; }
+        .cta-box h3 { margin-bottom: 15px; }
+        .cta-box a { display: inline-block; background: #25D366; color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; }
+        .footer { text-align: center; padding: 30px 20px; color: #666; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/" class="back">← Retour</a>
+        <span style="color: #d4a853; font-weight: 600;">GUINDIMA</span>
+    </header>
+    <section class="hero">
+        <h1>📦 Contenu du kit</h1>
+        <p>Découvrez ce qui est inclus dans chaque offre</p>
+    </section>
+    <div class="content">
+        <div class="kit-section">
+            <h2>🔌 Tracker Seul — 9 000 F</h2>
+            <div class="item-grid">
+                <div class="item"><div class="item-icon">📍</div><h4>Tracker GPS</h4><p>Traceur compact compatible iOS & Android</p></div>
+                <div class="item"><div class="item-icon">🔋</div><h4>Pile CR2032</h4><p>Incluse et installée, 1-2 ans d'autonomie</p></div>
+                <div class="item"><div class="item-icon">🔗</div><h4>Lanière/Cordon</h4><p>Pour attacher à vos clés, sac ou bagage</p></div>
+                <div class="item"><div class="item-icon">🔧</div><h4>Outil d'ouverture</h4><p>Pour ouvrir le boîtier et changer la pile</p></div>
+                <div class="item"><div class="item-icon">📄</div><h4>Notice</h4><p>Guide complet (guide français sur notre site)</p></div>
+            </div>
+            <div class="note"><p>ℹ️ <strong>Idéal pour :</strong> véhicules, bagages, clés, sacs, porte-monnaie, valises, et tout objet de valeur.</p></div>
+        </div>
+        <div class="kit-section featured">
+            <h2>🦄 Kit Saytu — 11 500 F ⭐</h2>
+            <div class="item-grid">
+                <div class="item"><div class="item-icon">📍</div><h4>Tracker GPS</h4><p>Traceur compact compatible iOS & Android</p></div>
+                <div class="item"><div class="item-icon">⌚</div><h4>Bracelet Silicone</h4><p>15 motifs colorés au choix</p></div>
+                <div class="item"><div class="item-icon">🔋</div><h4>Pile CR2032</h4><p>Incluse, 1-2 ans d'autonomie</p></div>
+                <div class="item"><div class="item-icon">🔗</div><h4>Lanière/Cordon</h4><p>Usage alternatif</p></div>
+                <div class="item"><div class="item-icon">🔧</div><h4>Outil d'ouverture</h4><p>Pour changer la pile</p></div>
+                <div class="item"><div class="item-icon">📄</div><h4>Notice</h4><p>Guide complet</p></div>
+            </div>
+            <div class="note"><p>ℹ️ <strong>Parfait pour les enfants !</strong> Bracelets colorés avec des motifs amusants (licornes, dinos, donuts, etc.)</p></div>
+        </div>
+        <div class="kit-section">
+            <h2>🎨 Kit Guëstu — 12 500 F</h2>
+            <div class="item-grid">
+                <div class="item"><div class="item-icon">📍</div><h4>Tracker GPS</h4><p>Traceur compact compatible iOS & Android</p></div>
+                <div class="item"><div class="item-icon">⌚</div><h4>Bracelet Nylon</h4><p>8 couleurs élégantes au choix</p></div>
+                <div class="item"><div class="item-icon">🔋</div><h4>Pile CR2032</h4><p>Incluse, 1-2 ans d'autonomie</p></div>
+                <div class="item"><div class="item-icon">🔗</div><h4>Lanière/Cordon</h4><p>Usage alternatif</p></div>
+                <div class="item"><div class="item-icon">🔧</div><h4>Outil d'ouverture</h4><p>Pour changer la pile</p></div>
+                <div class="item"><div class="item-icon">📄</div><h4>Notice</h4><p>Guide complet</p></div>
+            </div>
+            <div class="note"><p>ℹ️ <strong>Bracelet nylon</strong> confortable et ajustable, idéal pour les enfants plus grands et les adultes.</p></div>
+        </div>
+        <div class="kit-section">
+            <h2>🛒 Bracelets seuls (accessoires)</h2>
+            <div class="item-grid">
+                <div class="item"><div class="item-icon">🦄</div><h4>Bracelet Silicone</h4><p>2 500 F — 15 motifs disponibles</p></div>
+                <div class="item"><div class="item-icon">🎨</div><h4>Bracelet Nylon</h4><p>3 500 F — 8 couleurs disponibles</p></div>
+            </div>
+            <div class="note"><p>ℹ️ Achetez des bracelets supplémentaires pour changer de style ou remplacer un bracelet usé.</p></div>
+        </div>
+        <div class="cta-box">
+            <h3>Prêt à commander ?</h3>
+            <p style="opacity: 0.9; margin-bottom: 15px;">Contactez-nous sur WhatsApp pour passer commande</p>
+            <a href="https://wa.me/221767593281?text=Bonjour%2C%20je%20veux%20commander%20un%20kit%20Guindima">📱 Commander maintenant</a>
+        </div>
+    </div>
+    <footer class="footer"><p>© 2026 Guindima par 2MK Business</p></footer>
+</body>
+</html>
+'''
+
+@app.route('/')
+def home():
+    return render_template_string(SITE_HTML)
+
+@app.route('/guide')
+def guide():
+    return render_template_string(GUIDE_HTML)
+
+@app.route('/contenu')
+def contenu():
+    return render_template_string(CONTENU_HTML)
+
+@app.route('/health')
+def health():
+    return {'status': 'ok'}
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5001, debug=True)

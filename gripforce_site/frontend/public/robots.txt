@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://grip.2mkbusiness.org/sitemap-index.xml
