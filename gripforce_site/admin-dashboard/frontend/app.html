@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GripForce Admin · Dashboard</title>
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="admin-layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <svg viewBox="0 0 40 40" width="32" height="32"><circle cx="20" cy="20" r="7" fill="currentColor"/><circle cx="20" cy="6" r="2.5" fill="currentColor"/><circle cx="32" cy="13" r="2.5" fill="currentColor"/><circle cx="32" cy="27" r="2.5" fill="currentColor"/><circle cx="20" cy="34" r="2.5" fill="currentColor"/><circle cx="8" cy="27" r="2.5" fill="currentColor"/><circle cx="8" cy="13" r="2.5" fill="currentColor"/></svg>
+    <span>GripForce</span>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" id="nav-stats" onclick="switchTab('stats')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <span>Vue d'ensemble</span>
+    </button>
+    <button class="nav-item" id="nav-commandes" onclick="switchTab('commandes')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+      <span>Commandes</span>
+      <span class="nav-badge" id="nav-badge-attente" style="display:none">0</span>
+    </button>
+    <button class="nav-item" id="nav-paiements" onclick="switchTab('paiements')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Paiements</span>
+    </button>
+    <button class="nav-item" id="nav-livraisons" onclick="switchTab('livraisons')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      <span>Livraisons</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">Connecté : <strong id="sidebar-user-name">...</strong></div>
+    <button class="btn-logout" onclick="logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Déconnexion
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main-content">
+
+<!-- TAB: STATS -->
+<div class="tab-content" id="tab-stats">
+  <div class="admin-header">
+    <h1>Vue d'ensemble</h1>
+    <div class="admin-header-actions">
+      <button class="btn btn-primary" onclick="openCreateCommande()">+ Nouvelle commande</button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">CA Total</div>
+      <div class="stat-value" id="stat-ca-total">0 F</div>
+      <div class="stat-sub">Toutes commandes (sauf annulées)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">CA Aujourd'hui</div>
+      <div class="stat-value" id="stat-ca-jour">0 F</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Commandes</div>
+      <div class="stat-value" id="stat-cmd-total">0</div>
+      <div class="stat-sub" id="stat-cmd-semaine">0 cette semaine</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Aujourd'hui</div>
+      <div class="stat-value" id="stat-cmd-jour">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">En attente</div>
+      <div class="stat-value" style="color:var(--warning)" id="stat-attente">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">À livrer</div>
+      <div class="stat-value" style="color:#60A5FA" id="stat-livrer">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Livrées</div>
+      <div class="stat-value" style="color:var(--success)" id="stat-livrees">0</div>
+    </div>
+  </div>
+
+  <div class="table-container" style="margin-top: 32px;">
+    <div class="table-header"><h2>Commandes récentes</h2></div>
+    <div id="recent-orders" style="padding: 16px 20px;" class="recent-list"></div>
+  </div>
+</div>
+
+<!-- TAB: COMMANDES -->
+<div class="tab-content hidden" id="tab-commandes">
+  <div class="admin-header">
+    <h1>Commandes</h1>
+    <button class="btn btn-primary" onclick="openCreateCommande()">+ Nouvelle</button>
+  </div>
+  <div class="table-container">
+    <div class="table-header">
+      <h2>Liste</h2>
+      <div class="table-actions">
+        <input type="text" class="table-search" placeholder="Rechercher client..." oninput="commandesFilter.search=this.value;commandesOffset=0;loadCommandes()">
+        <select class="filter-select" onchange="commandesFilter.status=this.value;commandesOffset=0;loadCommandes()">
+          <option value="">Tous statuts</option>
+          <option value="nouveau">Nouveau</option>
+          <option value="confirme">Confirmé</option>
+          <option value="preparation">Préparation</option>
+          <option value="livre">Livré</option>
+          <option value="annule">Annulé</option>
+        </select>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Client</th><th>Couleur</th><th>Qté</th><th>Total</th><th>Statut</th><th>Date</th><th></th></tr></thead>
+      <tbody id="commandes-tbody"></tbody>
+    </table>
+    <div class="pagination" id="pagination-info"></div>
+  </div>
+</div>
+
+<!-- TAB: PAIEMENTS -->
+<div class="tab-content hidden" id="tab-paiements">
+  <div class="admin-header"><h1>Paiements</h1></div>
+  <div class="table-container">
+    <div class="table-header"><h2>Liste</h2></div>
+    <table>
+      <thead><tr><th>#</th><th>Commande</th><th>Méthode</th><th>Montant</th><th>Statut</th><th>Date</th><th></th></tr></thead>
+      <tbody id="paiements-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB: LIVRAISONS -->
+<div class="tab-content hidden" id="tab-livraisons">
+  <div class="admin-header"><h1>Livraisons</h1></div>
+  <div class="table-container">
+    <div class="table-header"><h2>Liste</h2></div>
+    <table>
+      <thead><tr><th>#</th><th>Commande</th><th>Zone</th><th>Statut</th><th>Adresse</th><th></th></tr></thead>
+      <tbody id="livraisons-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- MODAL: CREATE COMMANDE -->
+<div class="modal-overlay hidden" id="modal-create">
+  <div class="modal">
+    <h2>Nouvelle commande</h2>
+    <form onsubmit="submitCommande(event)">
+      <div class="form-row">
+        <div class="form-group"><label>Nom client *</label><input id="cmd-name" required></div>
+        <div class="form-group"><label>WhatsApp *</label><input id="cmd-wa" placeholder="+221..." required></div>
+      </div>
+      <div class="form-group"><label>Adresse</label><input id="cmd-address"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Couleur</label><select id="cmd-color"><option>Noir</option><option>Rose</option></select></div>
+        <div class="form-group"><label>Quantité</label><input type="number" id="cmd-qty" value="1" min="1" max="99"></div>
+        <div class="form-group"><label>Prix unitaire (F)</label><input type="number" id="cmd-amount" value="4500"></div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea id="cmd-notes" placeholder="Infos complémentaires..."></textarea></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-create')">Annuler</button>
+        <button type="submit" class="btn btn-primary">Créer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: EDIT COMMANDE -->
+<div class="modal-overlay hidden" id="modal-edit">
+  <div class="modal">
+    <h2>Modifier commande</h2>
+    <form onsubmit="submitEditCommande(event)">
+      <input type="hidden" id="edit-id">
+      <div class="form-row">
+        <div class="form-group"><label>Nom client</label><input id="edit-name" required></div>
+        <div class="form-group"><label>WhatsApp</label><input id="edit-wa" required></div>
+      </div>
+      <div class="form-group"><label>Adresse</label><input id="edit-address"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Couleur</label><select id="edit-color"><option>Noir</option><option>Rose</option></select></div>
+        <div class="form-group"><label>Quantité</label><input type="number" id="edit-qty" min="1"></div>
+        <div class="form-group"><label>Prix unitaire (F)</label><input type="number" id="edit-amount"></div>
+        <div class="form-group"><label>Statut</label><select id="edit-status"><option value="nouveau">Nouveau</option><option value="confirme">Confirmé</option><option value="preparation">Préparation</option><option value="livre">Livré</option><option value="annule">Annulé</option></select></div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea id="edit-notes"></textarea></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-edit')">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: EDIT LIVRAISON -->
+<div class="modal-overlay hidden" id="modal-livraison">
+  <div class="modal">
+    <h2>Modifier livraison</h2>
+    <form onsubmit="submitLivraison(event)">
+      <input type="hidden" id="liv-id">
+      <div class="form-row">
+        <div class="form-group"><label>Zone</label><input id="liv-zone"></div>
+        <div class="form-group"><label>Statut</label><select id="liv-statut"><option value="en_attente">En attente</option><option value="en_cours">En cours</option><option value="livre">Livré</option></select></div>
+      </div>
+      <div class="form-group"><label>Adresse complète</label><textarea id="liv-adresse"></textarea></div>
+      <div class="form-group"><label>Notes de suivi</label><textarea id="liv-notes"></textarea></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-livraison')">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
