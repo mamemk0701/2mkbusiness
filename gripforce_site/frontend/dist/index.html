@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GripForce · Entraîne ta poigne. Réveille tes avant-bras.</title>
+<meta name="description" content="L'exerciseur de main compact qui renforce doigts, poignets et avant-bras. Conçu à Dakar, pensé pour ta vie quotidienne.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+
+:root {
+  --ink-50: #FAFAF7;
+  --ink-100: #F2F2EE;
+  --ink-200: #E2E2DC;
+  --ink-300: #C8C8C0;
+  --ink-400: #9A9A90;
+  --ink-500: #6E6E64;
+  --ink-600: #4E4E46;
+  --ink-700: #3A3A34;
+  --ink-800: #252520;
+  --ink-900: #0D0D0C;
+  --volt-50: #F5FFD6;
+  --volt-300: #CCFF33;
+  --volt-400: #BBFF00;
+  --volt-500: #A8E600;
+  --volt-700: #6B9200;
+  --success: #22C55E;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--ink-50);
+  color: var(--ink-900);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body.dark {
+  background: var(--ink-900);
+  color: var(--ink-50);
+}
+
+/* GRAIN OVERLAY */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* CONTAINER */
+.container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+@media (min-width: 768px) { .container { padding: 0 48px; } }
+
+/* HEADER */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(250,250,247,0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226,226,220,0.6);
+}
+.dark header {
+  background: rgba(13,13,12,0.8);
+  border-color: rgba(37,37,32,0.6);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+@media (min-width: 768px) { .header-inner { height: 80px; } }
+
+/* LOGO */
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+.logo-icon { width: 36px; height: 36px; }
+.logo-text { display: flex; flex-direction: column; line-height: 1; }
+.logo-name { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+.logo-sub { display: none; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--ink-500); margin-top: 2px; }
+@media (min-width: 768px) { .logo-sub { display: block; } }
+
+/* NAV */
+nav { display: none; gap: 32px; }
+@media (min-width: 768px) { nav { display: flex; } }
+nav a { font-size: 14px; font-weight: 500; color: var(--ink-700); text-decoration: none; transition: color 0.2s; }
+nav a:hover { color: var(--ink-900); }
+.dark nav a { color: var(--ink-200); }
+.dark nav a:hover { color: var(--ink-50); }
+
+.header-actions { display: flex; align-items: center; gap: 8px; }
+
+/* ICON BUTTON */
+.icon-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-200);
+  background: transparent;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.2s;
+  color: inherit;
+}
+.icon-btn:hover { border-color: var(--ink-400); }
+.dark .icon-btn { border-color: var(--ink-700); }
+.dark .icon-btn:hover { border-color: var(--ink-500); }
+
+/* EYEBROW */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--ink-500);
+}
+.dark .eyebrow { color: var(--ink-400); }
+
+/* HERO SECTION */
+.hero {
+  position: relative;
+  padding: 32px 0 80px;
+  overflow: hidden;
+}
+@media (min-width: 768px) { .hero { padding: 64px 0 128px; } }
+
+/* GRID BG */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(var(--ink-200) 1px, transparent 1px), linear-gradient(90deg, var(--ink-200) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+.dark .hero::after {
+  background-image: linear-gradient(var(--ink-800) 1px, transparent 1px), linear-gradient(90deg, var(--ink-800) 1px, transparent 1px);
+  opacity: 0.4;
+}
+
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px;
+  position: relative; z-index: 1;
+}
+@media (min-width: 768px) { .hero-top { margin-bottom: 64px; } }
+
+.status-dot {
+  display: flex; align-items: center; gap: 8px;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+.hero-grid {
+  display: grid;
+  gap: 24px;
+  align-items: end;
+  position: relative; z-index: 1;
+  margin-bottom: 64px;
+}
+@media (min-width: 768px) {
+  .hero-grid { grid-template-columns: 7fr 5fr; gap: 40px; }
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(48px, 8vw, 96px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.italic-accent { font-style: italic; font-weight: 400; color: var(--volt-500); position: relative; display: inline-block; }
+.dark .italic-accent { color: var(--volt-400); }
+.underline-wave {
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 8px;
+}
+
+.hero-desc { font-size: 17px; line-height: 1.7; color: var(--ink-700); max-width: 480px; }
+.dark .hero-desc { color: var(--ink-200); }
+
+.hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+
+/* BUTTONS */
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 28px;
+  background: var(--ink-900);
+  color: var(--ink-50);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 14px;
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+.dark .btn-primary { background: var(--ink-50); color: var(--ink-900); }
+
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 28px;
+  background: transparent;
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 14px;
+  border: 1px solid var(--ink-200);
+  border-radius: 100px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.btn-secondary:hover { border-color: var(--ink-400); background: var(--ink-100); }
+.dark .btn-secondary { color: var(--ink-50); border-color: var(--ink-700); }
+.dark .btn-secondary:hover { border-color: var(--ink-500); background: var(--ink-800); }
+
+.btn-whatsapp {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  padding: 16px 28px;
+  background: var(--success);
+  color: white;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-whatsapp:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(34,197,94,0.3); }
+
+/* HERO VISUAL */
+.hero-visual {
+  position: relative;
+  z-index: 1;
+}
+.hero-image-wrap {
+  aspect-ratio: 21/9;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
+  border: 1px solid var(--ink-200);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dark .hero-image-wrap {
+  background: linear-gradient(135deg, var(--ink-800), var(--ink-900));
+  border-color: var(--ink-700);
+}
+.hero-image-wrap img {
+  height: 80%;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 20px 60px rgba(0,0,0,0.3));
+}
+.hero-badge {
+  position: absolute;
+  top: 16px; left: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.badge-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(13,13,12,0.85);
+  color: var(--ink-50);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-radius: 100px;
+  backdrop-filter: blur(8px);
+}
+.hero-series {
+  position: absolute; bottom: 16px; right: 16px; text-align: right;
+}
+.hero-series-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-500); }
+.hero-series-num { font-family: var(--font-display); font-size: 36px; font-weight: 500; margin-top: 2px; }
+@media (min-width: 768px) { .hero-series-num { font-size: 48px; } }
+
+/* MARQUEE */
+.marquee-wrap { overflow: hidden; margin-top: 48px; position: relative; z-index: 1; }
+.marquee-wrap::before, .marquee-wrap::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0;
+  width: 120px; z-index: 2;
+}
+.marquee-wrap::before { left: 0; background: linear-gradient(90deg, var(--ink-50), transparent); }
+.marquee-wrap::after { right: 0; background: linear-gradient(-90deg, var(--ink-50), transparent); }
+.dark .marquee-wrap::before { background: linear-gradient(90deg, var(--ink-900), transparent); }
+.dark .marquee-wrap::after { background: linear-gradient(-90deg, var(--ink-900), transparent); }
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+  gap: 40px;
+}
+@media (min-width: 768px) { .marquee-track { gap: 64px; } }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-item { display: flex; align-items: center; gap: 40px; white-space: nowrap; }
+@media (min-width: 768px) { .marquee-item { gap: 64px; } }
+.marquee-text { font-family: var(--font-display); font-size: 20px; font-weight: 500; color: var(--ink-400); }
+@media (min-width: 768px) { .marquee-text { font-size: 24px; } }
+.marquee-text.italic { font-style: italic; font-weight: 400; }
+.dark .marquee-text { color: var(--ink-400); }
+.marquee-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--volt-500); flex-shrink: 0; }
+
+/* PRODUCT SECTION */
+#produit {
+  padding: 80px 0;
+}
+@media (min-width: 768px) { #produit { padding: 128px 0; } }
+
+.product-grid {
+  display: grid;
+  gap: 40px;
+  align-items: start;
+}
+@media (min-width: 768px) { .product-grid { grid-template-columns: 1fr 1fr; gap: 64px; } }
+@media (min-width: 1024px) { .product-grid { gap: 96px; } }
+
+/* SLIDER */
+.product-slider-wrap {
+  aspect-ratio: 1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
+  border: 1px solid var(--ink-200);
+  position: relative;
+}
+.dark .product-slider-wrap {
+  background: linear-gradient(135deg, var(--ink-800), var(--ink-900));
+  border-color: var(--ink-700);
+}
+
+.slider-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+.slide img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.25));
+  pointer-events: none;
+  user-select: none;
+}
+
+/* SLIDER NAV ARROWS */
+.slider-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-200);
+  background: rgba(250,250,247,0.85);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-900);
+  transition: border-color 0.2s, background 0.2s, opacity 0.2s;
+  z-index: 2;
+  opacity: 0;
+}
+.product-slider-wrap:hover .slider-arrow { opacity: 1; }
+.slider-arrow:hover { border-color: var(--ink-400); background: rgba(250,250,247,1); }
+.dark .slider-arrow { background: rgba(37,37,32,0.85); border-color: var(--ink-700); color: var(--ink-50); }
+.dark .slider-arrow:hover { background: rgba(37,37,32,1); }
+.slider-arrow.prev { left: 12px; }
+.slider-arrow.next { right: 12px; }
+.slider-arrow:disabled { opacity: 0 !important; pointer-events: none; }
+
+/* SLIDER DOTS */
+.slider-dots {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+.slider-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ink-300);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  border: none;
+  padding: 0;
+}
+.slider-dot.active { background: var(--ink-700); transform: scale(1.4); }
+.dark .slider-dot { background: var(--ink-600); }
+.dark .slider-dot.active { background: var(--ink-200); }
+
+.product-thumbs {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+.thumb {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ink-100);
+  border: 2px solid var(--ink-200);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.2s;
+  padding: 8px;
+}
+.thumb:hover, .thumb.active { border-color: var(--volt-500); }
+.dark .thumb { background: var(--ink-800); border-color: var(--ink-700); }
+.thumb img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2)); }
+
+/* PRODUCT INFO */
+.product-eyebrow { margin-bottom: 16px; }
+
+h2 { font-family: var(--font-display); font-size: clamp(32px, 5vw, 56px); font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+
+.product-desc { font-size: 17px; line-height: 1.7; color: var(--ink-700); margin-bottom: 32px; max-width: 480px; }
+.dark .product-desc { color: var(--ink-200); }
+
+.price-wrap { display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px; }
+.price-main { font-family: var(--font-display); font-size: 56px; font-weight: 500; tabular-nums: true; }
+@media (min-width: 768px) { .price-main { font-size: 64px; } }
+.price-currency { font-size: 24px; color: var(--ink-500); font-family: var(--font-body); }
+.price-old { font-size: 20px; color: var(--ink-400); text-decoration: line-through; }
+
+.launch-badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 8px 16px;
+  background: var(--volt-50);
+  border: 1px solid rgba(168,230,0,0.3);
+  border-radius: 100px;
+  color: var(--volt-700);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 32px;
+}
+.dark .launch-badge { background: rgba(168,230,0,0.1); border-color: rgba(168,230,0,0.2); color: var(--volt-300); }
+.launch-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--volt-500); animation: pulse 2s infinite; }
+
+/* COLOR PICKER */
+.color-section { margin-bottom: 24px; }
+.color-label { font-size: 13px; color: var(--ink-600); margin-bottom: 12px; }
+.dark .color-label { color: var(--ink-300); }
+.color-label span { font-weight: 600; color: var(--ink-900); }
+.dark .color-label span { color: var(--ink-50); }
+.color-swatches { display: flex; gap: 12px; }
+.swatch {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  padding: 4px;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.swatch.active { border-color: var(--volt-500); transform: scale(1.05); }
+.swatch-inner { width: 100%; height: 100%; border-radius: 50%; }
+.swatch-check {
+  position: absolute; top: -4px; right: -4px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--volt-500);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.swatch.active .swatch-check { opacity: 1; }
+
+/* QTY */
+.qty-section { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+.qty-label { font-size: 13px; color: var(--ink-600); }
+.dark .qty-label { color: var(--ink-300); }
+.qty-ctrl {
+  display: flex; align-items: center;
+  border: 1px solid var(--ink-200);
+  border-radius: 100px;
+}
+.dark .qty-ctrl { border-color: var(--ink-700); }
+.qty-btn {
+  width: 40px; height: 40px;
+  border: none; background: transparent;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  color: inherit;
+  transition: background 0.15s;
+}
+.qty-btn:hover { background: var(--ink-100); }
+.dark .qty-btn:hover { background: var(--ink-800); }
+.qty-num { width: 40px; text-align: center; font-size: 14px; font-weight: 500; }
+
+.add-to-cart {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  padding: 16px 32px;
+  background: var(--ink-900);
+  color: var(--ink-50);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-bottom: 32px;
+}
+.add-to-cart:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.dark .add-to-cart { background: var(--ink-50); color: var(--ink-900); }
+
+/* TRUST BAR */
+.trust-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding-top: 32px;
+  border-top: 1px solid var(--ink-200);
+}
+.dark .trust-bar { border-color: var(--ink-700); }
+.trust-item-val { font-family: var(--font-display); font-size: 20px; font-weight: 500; }
+.trust-item-desc { font-size: 12px; color: var(--ink-500); margin-top: 2px; }
+
+/* SPECS */
+.specs-section { margin-top: 80px; }
+@media (min-width: 768px) { .specs-section { margin-top: 112px; } }
+.specs-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+@media (min-width: 768px) { .specs-header { margin-bottom: 48px; } }
+.specs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (min-width: 768px) { .specs-grid { grid-template-columns: repeat(3, 1fr); gap: 24px; } }
+.spec-card {
+  padding: 16px 20px;
+  background: rgba(242,242,238,0.6);
+  border: 1px solid var(--ink-200);
+  border-radius: 12px;
+}
+.dark .spec-card { background: rgba(37,37,32,0.6); border-color: var(--ink-700); }
+.spec-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--ink-500); margin-bottom: 6px; }
+.spec-val { font-family: var(--font-display); font-size: 20px; font-weight: 500; }
+
+/* BENEFITS SECTION */
+#benefices {
+  padding: 80px 0;
+  background: rgba(242,242,238,0.4);
+  border-top: 1px solid var(--ink-200);
+  border-bottom: 1px solid var(--ink-200);
+}
+@media (min-width: 768px) { #benefices { padding: 128px 0; } }
+.dark #benefices { background: rgba(37,37,32,0.4); border-color: var(--ink-700); }
+
+.benefits-header {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 64px;
+}
+@media (min-width: 768px) {
+  .benefits-header { grid-template-columns: 3fr 9fr; gap: 24px; margin-bottom: 96px; }
+}
+
+h3.benefit-num { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-500); }
+
+.benefit-row {
+  display: grid;
+  gap: 24px;
+  padding: 40px 0;
+  border-top: 1px solid var(--ink-200);
+  align-items: start;
+}
+.benefit-row:last-child { border-bottom: 1px solid var(--ink-200); }
+.dark .benefit-row { border-color: var(--ink-700); }
+@media (min-width: 768px) { .benefit-row { grid-template-columns: 2fr 6fr 4fr; gap: 40px; padding: 64px 0; } }
+
+.benefit-title { font-family: var(--font-display); font-size: clamp(24px, 3vw, 36px); font-weight: 500; margin-bottom: 16px; }
+.benefit-desc { font-size: 15px; line-height: 1.7; color: var(--ink-700); max-width: 480px; }
+.dark .benefit-desc { color: var(--ink-200); }
+
+.benefit-metric { padding-left: 0; }
+@media (min-width: 768px) { .benefit-metric { padding-left: 40px; border-left: 1px solid var(--ink-200); } }
+.dark .benefit-metric { border-color: var(--ink-700); }
+.metric-big { font-family: var(--font-display); font-size: clamp(56px, 7vw, 80px); font-weight: 500; color: var(--volt-500); line-height: 1; }
+.dark .metric-big { color: var(--volt-400); }
+.metric-label { font-size: 14px; color: var(--ink-500); margin-top: 8px; }
+
+/* FOR WHO SECTION */
+#for-who {
+  padding: 80px 0;
+}
+@media (min-width: 768px) { #for-who { padding: 128px 0; } }
+
+.for-who-header {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+@media (min-width: 768px) {
+  .for-who-header { grid-template-columns: 5fr 7fr; gap: 24px; margin-bottom: 80px; align-items: end; }
+}
+
+.cards-grid {
+  display: grid;
+  background: var(--ink-200);
+  gap: 1px;
+  border: 1px solid var(--ink-200);
+  border-radius: 16px;
+  overflow: hidden;
+  grid-template-columns: 1fr 1fr;
+}
+@media (min-width: 1024px) { .cards-grid { grid-template-columns: repeat(3, 1fr); } }
+.dark .cards-grid { background: var(--ink-700); border-color: var(--ink-700); }
+
+.card-item {
+  background: var(--ink-50);
+  padding: 24px 32px;
+  transition: background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.card-item:hover { background: var(--ink-100); }
+.dark .card-item { background: var(--ink-900); }
+.dark .card-item:hover { background: var(--ink-800); }
+
+.card-num { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-500); margin-bottom: 16px; }
+.card-title { font-family: var(--font-display); font-size: clamp(22px, 2.5vw, 32px); font-weight: 500; margin-bottom: 8px; }
+.card-desc { font-size: 13px; color: var(--ink-600); line-height: 1.5; }
+.dark .card-desc { color: var(--ink-300); }
+.card-arrow { position: absolute; top: 24px; right: 24px; opacity: 0; transition: opacity 0.2s; }
+.card-item:hover .card-arrow { opacity: 1; }
+
+/* FAQ */
+#faq {
+  padding: 80px 0;
+  background: rgba(242,242,238,0.4);
+  border-top: 1px solid var(--ink-200);
+  border-bottom: 1px solid var(--ink-200);
+}
+@media (min-width: 768px) { #faq { padding: 128px 0; } }
+.dark #faq { background: rgba(37,37,32,0.4); border-color: var(--ink-700); }
+
+.faq-header {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+@media (min-width: 768px) {
+  .faq-header { grid-template-columns: 4fr 8fr; gap: 24px; margin-bottom: 64px; align-items: end; }
+}
+.faq-header p { font-size: 15px; line-height: 1.7; color: var(--ink-700); }
+.dark .faq-header p { color: var(--ink-200); }
+.faq-header a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--volt-500); text-decoration-thickness: 2px; color: inherit; transition: color 0.2s; }
+.faq-header a:hover { color: var(--volt-500); }
+
+.faq-list { max-width: 896px; }
+
+details {
+  border-top: 1px solid var(--ink-200);
+  padding: 20px 0;
+}
+details:last-of-type { border-bottom: 1px solid var(--ink-200); }
+.dark details, .dark details:last-of-type { border-color: var(--ink-700); }
+
+summary {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+summary::-webkit-details-marker { display: none; }
+.summary-inner { display: flex; align-items: flex-start; gap: 24px; }
+.faq-num { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-500); padding-top: 6px; display: none; }
+@media (min-width: 768px) { .faq-num { display: block; } }
+.faq-q { font-family: var(--font-display); font-size: clamp(16px, 2vw, 24px); font-weight: 500; padding-right: 16px; }
+
+.faq-icon {
+  flex-shrink: 0;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-200);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.3s;
+}
+@media (min-width: 768px) { .faq-icon { width: 40px; height: 40px; } }
+.dark .faq-icon { border-color: var(--ink-700); }
+details[open] .faq-icon { transform: rotate(45deg); }
+
+.faq-a {
+  padding-top: 16px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-700);
+  max-width: 720px;
+}
+@media (min-width: 768px) { .faq-a { padding-left: 64px; } }
+.dark .faq-a { color: var(--ink-200); }
+
+/* CTA SECTION */
+#contact { padding: 80px 0; }
+@media (min-width: 768px) { #contact { padding: 128px 0; } }
+
+.cta-box {
+  position: relative;
+  border-radius: 24px;
+  background: var(--ink-900);
+  color: var(--ink-50);
+  padding: 48px 32px;
+  overflow: hidden;
+}
+@media (min-width: 768px) { .cta-box { padding: 96px 64px; } }
+@media (min-width: 1024px) { .cta-box { padding: 96px 96px; } }
+
+.cta-grid-bg {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+}
+.cta-blur {
+  position: absolute; top: -80px; right: -80px;
+  width: 384px; height: 384px;
+  background: rgba(168,230,0,0.15);
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.cta-inner {
+  position: relative;
+  display: grid;
+  gap: 40px;
+  align-items: center;
+}
+@media (min-width: 768px) { .cta-inner { grid-template-columns: 1fr 1fr; gap: 64px; } }
+
+.cta-pre { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--volt-400); margin-bottom: 16px; }
+.cta-h { font-family: var(--font-display); font-size: clamp(36px, 5vw, 60px); font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 24px; }
+.cta-italic { font-style: italic; font-weight: 400; color: var(--volt-400); }
+.cta-desc { font-size: 16px; color: rgba(255,255,255,0.7); line-height: 1.6; max-width: 400px; }
+
+.price-card {
+  background: var(--ink-800);
+  border: 1px solid var(--ink-700);
+  border-radius: 16px;
+  padding: 32px;
+}
+.price-card-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.price-card-label { font-size: 14px; color: rgba(255,255,255,0.5); }
+.price-card-old { font-size: 14px; color: var(--ink-500); text-decoration: line-through; }
+.price-card-big { font-family: var(--font-display); font-size: 56px; font-weight: 500; margin-bottom: 20px; }
+@media (min-width: 768px) { .price-card-big { font-size: 64px; } }
+.price-card-currency { font-size: 20px; color: rgba(255,255,255,0.5); font-family: var(--font-body); }
+.price-card-shipping { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--volt-400); margin-bottom: 24px; }
+.price-card-shipping-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--volt-400); animation: pulse 2s infinite; }
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--ink-200);
+  padding: 48px 0 32px;
+}
+.dark footer { border-color: var(--ink-700); }
+.footer-grid {
+  display: grid;
+  gap: 40px;
+  margin-bottom: 48px;
+}
+@media (min-width: 768px) { .footer-grid { grid-template-columns: 2fr 1fr 1fr; gap: 64px; } }
+
+.footer-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.footer-logo-text { font-family: var(--font-display); font-weight: 700; font-size: 24px; }
+.footer-desc { font-size: 14px; color: var(--ink-600); line-height: 1.6; max-width: 380px; }
+.dark .footer-desc { color: var(--ink-300); }
+
+.footer-socials { display: flex; gap: 12px; margin-top: 24px; }
+.social-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-200);
+  display: flex; align-items: center; justify-content: center;
+  color: inherit; text-decoration: none;
+  transition: border-color 0.2s;
+}
+.social-btn:hover { border-color: var(--ink-400); }
+.dark .social-btn { border-color: var(--ink-700); }
+.dark .social-btn:hover { border-color: var(--ink-500); }
+
+.footer-col h4 { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-500); margin-bottom: 16px; }
+.footer-links { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.footer-links a { font-size: 14px; color: var(--ink-700); text-decoration: none; transition: color 0.2s; }
+.footer-links a:hover { color: var(--ink-900); }
+.dark .footer-links a { color: var(--ink-200); }
+.dark .footer-links a:hover { color: var(--ink-50); }
+.footer-links li { font-size: 14px; color: var(--ink-700); }
+.dark .footer-links li { color: var(--ink-200); }
+
+.footer-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ink-200);
+}
+@media (min-width: 768px) { .footer-bottom { flex-direction: row; align-items: center; justify-content: space-between; } }
+.dark .footer-bottom { border-color: var(--ink-700); }
+.footer-copy { font-size: 12px; color: var(--ink-500); }
+.footer-made { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--ink-400); }
+
+/* WA FLOAT */
+.wa-float {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  z-index: 40;
+  width: 56px; height: 56px;
+  background: var(--success);
+  color: white;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(34,197,94,0.4);
+  transition: transform 0.2s;
+}
+@media (min-width: 768px) { .wa-float { bottom: 32px; right: 32px; width: 64px; height: 64px; } }
+.wa-float:hover { transform: scale(1.1); }
+.wa-float:active { transform: scale(0.95); }
+.wa-ping {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: var(--success);
+  animation: ping 2s cubic-bezier(0,0,0.2,1) infinite;
+  opacity: 0.2;
+}
+@keyframes ping { 75%,100% { transform: scale(1.8); opacity: 0; } }
+
+/* REVEAL ANIMATION */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.in-view { opacity: 1; transform: none; }
+
+/* DARK MODE */
+.dark body { background: var(--ink-900); color: var(--ink-50); }
+
+/* THEME ICONS */
+.sun-icon { display: block; }
+.moon-icon { display: none; }
+.dark .sun-icon { display: none; }
+.dark .moon-icon { display: block; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="container header-inner">
+    <a href="/" class="logo" aria-label="GripForce - Accueil">
+      <svg class="logo-icon" viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="7" fill="currentColor"/>
+        <circle cx="20" cy="6" r="2.5" fill="currentColor"/>
+        <circle cx="32" cy="13" r="2.5" fill="currentColor"/>
+        <circle cx="32" cy="27" r="2.5" fill="currentColor"/>
+        <circle cx="20" cy="34" r="2.5" fill="currentColor"/>
+        <circle cx="8" cy="27" r="2.5" fill="currentColor"/>
+        <circle cx="8" cy="13" r="2.5" fill="currentColor"/>
+        <line x1="20" y1="13" x2="20" y2="8" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="25.5" y1="16" x2="30" y2="14" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="25.5" y1="24" x2="30" y2="26" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="20" y1="27" x2="20" y2="32" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="14.5" y1="24" x2="10" y2="26" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="14.5" y1="16" x2="10" y2="14" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+      <div class="logo-text">
+        <span class="logo-name">GripForce</span>
+        <span class="logo-sub">by 2MK Business</span>
+      </div>
+    </a>
+
+    <nav>
+      <a href="#produit">Produit</a>
+      <a href="#benefices">Bénéfices</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="icon-btn" id="theme-btn" aria-label="Changer de thème">
+        <svg class="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2m-4.93 7.07-1.41-1.41M6.34 6.34 4.93 4.93"/>
+        </svg>
+        <svg class="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+        </svg>
+      </button>
+      <button class="icon-btn" aria-label="Panier">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+
+    <div class="hero-top reveal">
+      <div class="status-dot">
+        <span class="dot"></span>
+        <span class="eyebrow">Offre de lancement</span>
+      </div>
+      <span class="eyebrow" style="display:none" id="edition-label">Édition n°01</span>
+    </div>
+
+    <div class="hero-grid">
+      <div class="reveal">
+        <h1>
+          Entraîne
+          <span class="italic-accent">
+            ta poigne.
+            <svg class="underline-wave" viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M2 9 Q 75 2, 150 6 T 298 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <br>Réveille tes
+          <em style="font-style:italic;font-weight:400">avant-bras.</em>
+        </h1>
+      </div>
+      <div class="reveal" style="transition-delay:200ms">
+        <p class="hero-desc">
+          Un exerciseur compact et silencieux pour renforcer ta prise, soulager tes mains, et reprendre le contrôle — 5 minutes par jour, partout.
+        </p>
+        <div class="hero-ctas">
+          <a href="#produit" class="btn-primary">
+            Voir le produit
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <a href="#benefices" class="btn-secondary">Comment ça marche</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- HERO IMAGE -->
+    <div class="hero-visual reveal" style="transition-delay:400ms">
+      <div class="hero-image-wrap">
+        <img src="images/grip-1.png" alt="GripForce exerciseur de main" loading="eager">
+        <div class="hero-badge">
+          <span class="badge-pill">Spec 01 · 12,3 cm</span>
+          <span class="badge-pill">Spec 02 · Silicone médical</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MARQUEE -->
+    <div class="marquee-wrap reveal" style="transition-delay:500ms">
+      <div class="marquee-track">
+        <div class="marquee-item">
+          <span class="marquee-text">Entraîne ta poigne</span>
+          <span class="marquee-dot"></span>
+          <span class="marquee-text italic">Soulage tes mains</span>
+          <span class="marquee-dot"></span>
+          <span class="marquee-text">5 min par jour</span>
+          <span class="marquee-dot"></span>
+          <span class="marquee-text italic">Partout avec toi</span>
+          <span class="marquee-dot"></span>
+          <span class="marquee-text">Fabriqué à Dakar</span>
+          <span class="marquee-dot"></span>
+        </div>
+        <div class="marquee-item">
+          <span class="marquee-text">Entraîne ta poigne</span>
+          <span class="marquee-dot"></span>
+          <span class="marquee-text italic">Soulage tes mains</span>
+          <span class="marquee-dot"></span>
+          <span class="marquee-text">5 min par jour</span>
+          <span class="marquee-dot"></span>
+          <span class="marquee-text italic">Partout avec toi</span>
+          <span class="marquee-dot"></span>
+          <span class="marquee-text">Fabriqué à Dakar</span>
+          <span class="marquee-dot"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCT SECTION -->
+<section id="produit">
+  <div class="container">
+    <div class="product-grid">
+
+      <!-- IMAGE GALLERY -->
+      <div class="reveal">
+        <div class="product-slider-wrap" id="slider-wrap">
+          <div class="slider-track" id="slider-track">
+            <div class="slide"><img src="images/grip-1.png" alt="GripForce vue 1"></div>
+            <div class="slide"><img src="images/grip-2.png" alt="GripForce vue 2"></div>
+            <div class="slide"><img src="images/grip-3.png" alt="GripForce vue 3"></div>
+            <div class="slide"><img src="images/grip-4.png" alt="GripForce vue 4"></div>
+            <div class="slide"><img src="images/grip-5.png" alt="GripForce vue 5"></div>
+          </div>
+          <button class="slider-arrow prev" id="slider-prev" aria-label="Image précédente">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button class="slider-arrow next" id="slider-next" aria-label="Image suivante">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          <div class="slider-dots" id="slider-dots">
+            <button class="slider-dot active" data-index="0"></button>
+            <button class="slider-dot" data-index="1"></button>
+            <button class="slider-dot" data-index="2"></button>
+            <button class="slider-dot" data-index="3"></button>
+            <button class="slider-dot" data-index="4"></button>
+          </div>
+        </div>
+        <div class="product-thumbs" id="product-thumbs">
+          <div class="thumb active" data-index="0"><img src="images/grip-1.png" alt="Vue 1"></div>
+          <div class="thumb" data-index="1"><img src="images/grip-2.png" alt="Vue 2"></div>
+          <div class="thumb" data-index="2"><img src="images/grip-3.png" alt="Vue 3"></div>
+          <div class="thumb" data-index="3"><img src="images/grip-4.png" alt="Vue 4"></div>
+          <div class="thumb" data-index="4"><img src="images/grip-5.png" alt="Vue 5"></div>
+        </div>
+      </div>
+
+      <!-- PRODUCT INFO -->
+      <div class="reveal" style="transition-delay:200ms">
+        <div class="product-eyebrow eyebrow">GripForce · Édition n°01</div>
+        <h2 style="margin-bottom:24px">
+          5 doigts + 1 paume.<br>
+          Un seul objectif : <em style="font-style:italic;font-weight:400">la force.</em>
+        </h2>
+        <p class="product-desc">
+          Renforce ta poigne avec style. Silicone haut de gamme, picots massants, 6 points de préhension indépendants pour chaque doigt.
+        </p>
+
+        <!-- PRIX -->
+        <div class="price-wrap">
+          <span class="price-main">4 500 <span class="price-currency">F</span></span>
+        </div>
+
+        <div class="launch-badge">
+          <span class="launch-badge-dot"></span>
+          Livraison offerte à Dakar
+        </div>
+
+        <!-- COLOR PICKER -->
+        <div class="color-section">
+          <p class="color-label">Couleur : <span id="color-name">Noir</span></p>
+          <div class="color-swatches">
+            <button class="swatch active" aria-label="Noir" onclick="selectColor('Noir','#1A1A18',this)" style="padding:4px">
+              <div class="swatch-inner" style="background:#1A1A18"></div>
+              <div class="swatch-check">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+              </div>
+            </button>
+            <button class="swatch" aria-label="Rose" onclick="selectColor('Rose','#F4C0D1',this)" style="padding:4px">
+              <div class="swatch-inner" style="background:#F4C0D1;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08)"></div>
+              <div class="swatch-check">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- QTY -->
+        <div class="qty-section">
+          <span class="qty-label">Quantité :</span>
+          <div class="qty-ctrl">
+            <button class="qty-btn" onclick="changeQty(-1)" aria-label="Diminuer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+            </button>
+            <span class="qty-num" id="qty-display">1</span>
+            <button class="qty-btn" onclick="changeQty(1)" aria-label="Augmenter">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <a href="#" id="btn-commander" target="_blank" rel="noopener noreferrer" class="add-to-cart">
+          Commander maintenant
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+
+        <!-- TRUST -->
+        <div class="trust-bar">
+          <div>
+            <div class="trust-item-val">24h</div>
+            <div class="trust-item-desc">Livraison Dakar</div>
+          </div>
+          <div>
+            <div class="trust-item-val">30 jours</div>
+            <div class="trust-item-desc">Garantie remboursé</div>
+          </div>
+          <div>
+            <div class="trust-item-val">Wave · OM</div>
+            <div class="trust-item-desc">Paiement mobile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPECS -->
+    <div class="specs-section reveal">
+      <div class="specs-header">
+        <h2>Spécifications</h2>
+        <span class="eyebrow" style="display:none">Fiche technique</span>
+      </div>
+      <div class="specs-grid">
+        <div class="spec-card"><div class="spec-label">Dimensions</div><div class="spec-val">12,3 × 10 × 7 cm</div></div>
+        <div class="spec-card"><div class="spec-label">Matériau</div><div class="spec-val">Silicone médical</div></div>
+        <div class="spec-card"><div class="spec-label">Poids</div><div class="spec-val">180 g</div></div>
+        <div class="spec-card"><div class="spec-label">Points de préhension</div><div class="spec-val">6</div></div>
+        <div class="spec-card"><div class="spec-label">Résistance</div><div class="spec-val">Progressive</div></div>
+        <div class="spec-card"><div class="spec-label">Garantie</div><div class="spec-val">30 jours</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BENEFITS -->
+<section id="benefices">
+  <div class="container">
+    <div class="benefits-header reveal">
+      <div><span class="eyebrow">Pourquoi GripForce</span></div>
+      <div>
+        <h2>
+          Quatre raisons<br>
+          de <span class="italic-accent" style="position:relative">changer</span> tes mains.
+        </h2>
+      </div>
+    </div>
+
+    <div class="benefit-row reveal" style="transition-delay:0ms">
+      <div><span class="eyebrow">01 / 04</span></div>
+      <div>
+        <h3 class="benefit-title">Renforcement complet</h3>
+        <p class="benefit-desc">Travaille chaque doigt individuellement grâce aux 6 points de préhension. Doigts, poignets, avant-bras — tout est sollicité en 5 minutes.</p>
+      </div>
+      <div class="benefit-metric">
+        <div class="metric-big">6 pts</div>
+        <div class="metric-label">de préhension</div>
+      </div>
+    </div>
+
+    <div class="benefit-row reveal" style="transition-delay:100ms">
+      <div><span class="eyebrow">02 / 04</span></div>
+      <div>
+        <h3 class="benefit-title">Massage d'acupression</h3>
+        <p class="benefit-desc">Les picots texturés stimulent les points d'acupression de la paume. Soulage les tensions après une journée au clavier ou au volant.</p>
+      </div>
+      <div class="benefit-metric">
+        <div class="metric-big">40+</div>
+        <div class="metric-label">picots massants</div>
+      </div>
+    </div>
+
+    <div class="benefit-row reveal" style="transition-delay:200ms">
+      <div><span class="eyebrow">03 / 04</span></div>
+      <div>
+        <h3 class="benefit-title">Anti-stress au quotidien</h3>
+        <p class="benefit-desc">Presser, relâcher, masser. Un geste simple et répétitif qui libère les tensions mentales, canalise le stress et t'aide à te recentrer.</p>
+      </div>
+      <div class="benefit-metric">
+        <div class="metric-big">5 min</div>
+        <div class="metric-label">pour décompresser</div>
+      </div>
+    </div>
+
+    <div class="benefit-row reveal" style="transition-delay:300ms">
+      <div><span class="eyebrow">04 / 04</span></div>
+      <div>
+        <h3 class="benefit-title">Compact et discret</h3>
+        <p class="benefit-desc">Se glisse dans ta sacoche, ta boîte à gants, ton tiroir de bureau. Utilisable partout : bureau, voiture, canapé, salle d'attente.</p>
+      </div>
+      <div class="benefit-metric">
+        <div class="metric-big">12 cm</div>
+        <div class="metric-label">de diamètre</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOR WHO -->
+<section id="for-who">
+  <div class="container">
+    <div class="for-who-header">
+      <div class="reveal">
+        <div class="eyebrow" style="margin-bottom:16px">Pour qui ?</div>
+        <h2>
+          Pensé pour
+          <em style="font-style:italic;font-weight:400">tous ceux</em><br>
+          qui utilisent
+          <span class="italic-accent">leurs mains.</span>
+        </h2>
+      </div>
+      <div class="reveal" style="transition-delay:150ms;padding-top:8px">
+        <p style="font-size:17px;line-height:1.7;color:var(--ink-700);max-width:480px">
+          Si tes mains travaillent fort, souffrent, fatiguent ou ont besoin de retrouver leur force — GripForce est fait pour toi.
+        </p>
+      </div>
+    </div>
+
+    <div class="cards-grid">
+      <div class="card-item reveal" style="transition-delay:0ms">
+        <div class="card-num">01</div>
+        <div class="card-title">Sportifs</div>
+        <div class="card-desc">Musculation · Escalade · Tennis · Arts martiaux</div>
+        <div class="card-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg></div>
+      </div>
+      <div class="card-item reveal" style="transition-delay:80ms">
+        <div class="card-num">02</div>
+        <div class="card-title">Bureau</div>
+        <div class="card-desc">Devs · Designers · Étudiants</div>
+        <div class="card-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg></div>
+      </div>
+      <div class="card-item reveal" style="transition-delay:160ms">
+        <div class="card-num">03</div>
+        <div class="card-title">Rééducation</div>
+        <div class="card-desc">Post-fracture · Arthrose · Canal carpien</div>
+        <div class="card-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg></div>
+      </div>
+      <div class="card-item reveal" style="transition-delay:240ms">
+        <div class="card-num">04</div>
+        <div class="card-title">Seniors</div>
+        <div class="card-desc">Maintien dextérité · Force de préhension</div>
+        <div class="card-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg></div>
+      </div>
+      <div class="card-item reveal" style="transition-delay:320ms">
+        <div class="card-num">05</div>
+        <div class="card-title">Musiciens</div>
+        <div class="card-desc">Guitaristes · Pianistes · Batteurs</div>
+        <div class="card-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg></div>
+      </div>
+      <div class="card-item reveal" style="transition-delay:400ms">
+        <div class="card-num">06</div>
+        <div class="card-title">Conducteurs</div>
+        <div class="card-desc">Chauffeurs · Taxis · VTC</div>
+        <div class="card-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="container">
+    <div class="faq-header reveal">
+      <div>
+        <div class="eyebrow" style="margin-bottom:16px">FAQ</div>
+        <h2>Questions<br><em style="font-style:italic;font-weight:400">fréquentes.</em></h2>
+      </div>
+      <div>
+        <p>
+          Les réponses aux questions qu'on nous pose le plus. Tu ne trouves pas la tienne ?
+          <a href="#" id="faq-wa-link" target="_blank" rel="noopener">
+ Écris-nous sur WhatsApp</a>, on répond vite.
+        </p>
+      </div>
+    </div>
+
+    <div class="faq-list">
+      <details class="reveal">
+        <summary>
+          <div class="summary-inner">
+            <span class="faq-num">01</span>
+            <h3 class="faq-q">Le produit convient-il aux débutants ?</h3>
+          </div>
+          <div class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+        </summary>
+        <div class="faq-a">Oui. La résistance est progressive et adaptée à tous les niveaux. Tu peux commencer par des séances courtes (2–3 min) et augmenter selon ta progression.</div>
+      </details>
+
+      <details class="reveal" style="transition-delay:50ms">
+        <summary>
+          <div class="summary-inner">
+            <span class="faq-num">02</span>
+            <h3 class="faq-q">Combien de temps d'utilisation par jour ?</h3>
+          </div>
+          <div class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+        </summary>
+        <div class="faq-a">5 à 10 minutes par jour suffisent pour voir des résultats en 2–3 semaines. Tu peux l'utiliser pendant que tu regardes un film ou dans les transports.</div>
+      </details>
+
+      <details class="reveal" style="transition-delay:100ms">
+        <summary>
+          <div class="summary-inner">
+            <span class="faq-num">03</span>
+            <h3 class="faq-q">Est-ce bruyant ?</h3>
+          </div>
+          <div class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+        </summary>
+        <div class="faq-a">Non, c'est totalement silencieux. Parfait pour l'utiliser au bureau, pendant une réunion en ligne ou même la nuit.</div>
+      </details>
+
+      <details class="reveal" style="transition-delay:150ms">
+        <summary>
+          <div class="summary-inner">
+            <span class="faq-num">04</span>
+            <h3 class="faq-q">Livraison à Dakar ?</h3>
+          </div>
+          <div class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+        </summary>
+        <div class="faq-a">Livraison offerte sous 24h à Dakar et banlieue.</div>
+      </details>
+
+      <details class="reveal" style="transition-delay:200ms">
+        <summary>
+          <div class="summary-inner">
+            <span class="faq-num">05</span>
+            <h3 class="faq-q">Comment je paie ?</h3>
+          </div>
+          <div class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+        </summary>
+        <div class="faq-a">Paiement par Wave ou Orange Money. Après ta commande sur WhatsApp, on te communique les numéros de paiement et on livre dès réception.</div>
+      </details>
+
+      <details class="reveal" style="transition-delay:250ms">
+        <summary>
+          <div class="summary-inner">
+            <span class="faq-num">06</span>
+            <h3 class="faq-q">Garantie ?</h3>
+          </div>
+          <div class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+        </summary>
+        <div class="faq-a">30 jours satisfait ou remboursé. Si le produit ne te convient pas ou présente un défaut, on le remplace ou on te rembourse.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="contact">
+  <div class="container">
+    <div class="cta-box reveal">
+      <div class="cta-grid-bg"></div>
+      <div class="cta-blur"></div>
+      <div class="cta-inner">
+        <div>
+          <div class="cta-pre">Prêt à commencer ?</div>
+          <h2 class="cta-h">
+            Ta <span class="cta-italic">poigne</span><br>
+            a rendez-vous<br>
+            avec <span class="cta-italic">demain.</span>
+          </h2>
+          <p class="cta-desc">Commande en 1 minute. Livraison à Dakar en 24h. Paiement Wave ou Orange Money.</p>
+        </div>
+
+        <div>
+          <div class="price-card">
+            <div class="price-card-row">
+              <span class="price-card-label">Prix</span>
+            </div>
+            <div class="price-card-big">4 500 <span class="price-card-currency">F</span></div>
+            <div class="price-card-shipping">
+              <span class="price-card-shipping-dot"></span>
+              Livraison offerte à Dakar
+            </div>
+            <a href="#" id="cta-commander" target="_blank" rel="noopener noreferrer" class="btn-whatsapp">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.84 12.84 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.464 3.488"/></svg>
+              Commander maintenant
+            </a>
+          </div>
+          <a href="#produit" style="display:block;width:100%;text-align:center;padding:12px;font-size:14px;color:rgba(255,255,255,0.5);text-decoration:none;transition:color 0.2s;margin-top:12px" onmouseover="this.style.color='rgba(255,255,255,0.9)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">
+            Voir les détails du produit →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">
+          <svg viewBox="0 0 40 40" style="width:32px;height:32px" aria-hidden="true">
+            <circle cx="20" cy="20" r="7" fill="currentColor"/>
+            <circle cx="20" cy="6" r="2.5" fill="currentColor"/>
+            <circle cx="32" cy="13" r="2.5" fill="currentColor"/>
+            <circle cx="32" cy="27" r="2.5" fill="currentColor"/>
+            <circle cx="20" cy="34" r="2.5" fill="currentColor"/>
+            <circle cx="8" cy="27" r="2.5" fill="currentColor"/>
+            <circle cx="8" cy="13" r="2.5" fill="currentColor"/>
+          </svg>
+          <span class="footer-logo-text">GripForce</span>
+        </div>
+        <p class="footer-desc">L'exerciseur de main compact qui renforce doigts, poignets et avant-bras. Conçu à Dakar, pensé pour ta vie quotidienne.</p>
+        <div class="footer-socials">
+          <a href="https://www.tiktok.com/@2mk_business" target="_blank" rel="noopener" class="social-btn" aria-label="TikTok">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-.88-.05A6.33 6.33 0 005.8 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1.84-.1z"/></svg>
+          </a>
+          <a href="https://www.instagram.com/@2mk_business" target="_blank" rel="noopener" class="social-btn" aria-label="Instagram">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+          <a href="https://www.facebook.com/profile.php?id=61577463542000" target="_blank" rel="noopener" class="social-btn" aria-label="Facebook">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Navigation</h4>
+        <ul class="footer-links">
+          <li><a href="#produit">Produit</a></li>
+          <li><a href="#benefices">Bénéfices</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="/cgv">CGV</a></li>
+          <li><a href="/livraison">Livraison</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <ul class="footer-links">
+          <li><a href="#" id="footer-wa-link" target="_blank" rel="noopener" style="color:var(--success)">WhatsApp : +221 77 231 07 15 / +221 77 325 96 79</a></li>
+          <li>Dakar · Sénégal</li>
+          <li>Livraison 24h Dakar & banlieue</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="footer-copy">© 2026 GripForce. Une marque de 2MK Business. Tous droits réservés.</p>
+      <p class="footer-made">Made with ♥ in Dakar</p>
+    </div>
+  </div>
+</footer>
+
+<!-- WA FLOAT -->
+<a href="#" id="wa-float-link" target="_blank" rel="noopener noreferrer" class="wa-float" aria-label="Contacter sur WhatsApp">
+  <span class="wa-ping"></span>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="position:relative">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.84 12.84 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.464 3.488"/>
+  </svg>
+</a>
+
+<script>
+// WHATSAPP ROTATION — un seul numéro par session
+const whatsappNumbers = ['221772310715', '221773259679'];
+
+// Tire un numéro au hasard une seule fois par session
+const sessionWA = whatsappNumbers[Math.floor(Math.random() * whatsappNumbers.length)];
+
+function buildWAUrl(message) {
+  return `https://wa.me/${sessionWA}?text=${encodeURIComponent(message)}`;
+}
+
+// Init WhatsApp links
+document.addEventListener('DOMContentLoaded', () => {
+  const btnCommander = document.getElementById('btn-commander');
+  const faqLink = document.getElementById('faq-wa-link');
+  const ctaCommander = document.getElementById('cta-commander');
+  const waFloat = document.getElementById('wa-float-link');
+  const footerLink = document.getElementById('footer-wa-link');
+
+  if (btnCommander) btnCommander.href = buildWAUrl("Bonjour, j'aimerais commander un GripForce à 4 500 FCFA.");
+  if (faqLink) faqLink.href = buildWAUrl("Bonjour, j'ai une question sur GripForce.");
+  if (ctaCommander) ctaCommander.href = buildWAUrl("Bonjour, j'aimerais commander un GripForce à 4 500 FCFA.");
+  if (waFloat) waFloat.href = buildWAUrl("Bonjour, j'aimerais en savoir plus sur GripForce.");
+  if (footerLink) footerLink.href = buildWAUrl("Bonjour, j'aimerais en savoir plus sur GripForce.");
+});
+
+// THEME TOGGLE
+const btn = document.getElementById('theme-btn');
+const root = document.documentElement;
+const body = document.body;
+
+function applyTheme(t) {
+  if (t === 'dark') { body.classList.add('dark'); }
+  else { body.classList.remove('dark'); }
+  localStorage.setItem('gripforce_theme', t);
+}
+
+// Init
+const saved = localStorage.getItem('gripforce_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+applyTheme(saved);
+
+btn.addEventListener('click', () => {
+  const current = body.classList.contains('dark') ? 'dark' : 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+// SCROLL REVEAL
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('in-view'); observer.unobserve(e.target); }
+  });
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// QTY
+let qty = 1;
+function changeQty(d) {
+  qty = Math.max(1, Math.min(99, qty + d));
+  document.getElementById('qty-display').textContent = qty;
+}
+
+// SLIDER
+const track = document.getElementById('slider-track');
+const dots = document.querySelectorAll('.slider-dot');
+const thumbs = document.querySelectorAll('#product-thumbs .thumb');
+const prevBtn = document.getElementById('slider-prev');
+const nextBtn = document.getElementById('slider-next');
+const total = 5;
+let current = 0;
+let autoplayTimer = null;
+
+function goToSlide(index) {
+  current = (index + total) % total;
+  track.style.transform = `translateX(-${current * 100}%)`;
+  dots.forEach((d, i) => d.classList.toggle('active', i === current));
+  thumbs.forEach((t, i) => t.classList.toggle('active', i === current));
+}
+
+function startAutoplay() {
+  stopAutoplay();
+  autoplayTimer = setInterval(() => goToSlide(current + 1), 3000);
+}
+
+function stopAutoplay() {
+  if (autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; }
+}
+
+function manualGo(index) {
+  goToSlide(index);
+  stopAutoplay();
+  startAutoplay(); // reset timer after manual interaction
+}
+
+prevBtn.addEventListener('click', () => manualGo(current - 1));
+nextBtn.addEventListener('click', () => manualGo(current + 1));
+dots.forEach(d => d.addEventListener('click', () => manualGo(+d.dataset.index)));
+thumbs.forEach(t => t.addEventListener('click', () => manualGo(+t.dataset.index)));
+
+// Pause on hover
+document.getElementById('slider-wrap').addEventListener('mouseenter', stopAutoplay);
+document.getElementById('slider-wrap').addEventListener('mouseleave', startAutoplay);
+
+// Swipe support
+let touchStartX = 0;
+track.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; stopAutoplay(); }, { passive: true });
+track.addEventListener('touchend', e => {
+  const diff = touchStartX - e.changedTouches[0].clientX;
+  if (Math.abs(diff) > 40) goToSlide(diff > 0 ? current + 1 : current - 1);
+  startAutoplay();
+});
+
+startAutoplay();
+
+// COLOR PICKER
+function selectColor(name, hex, el) {
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('color-name').textContent = name;
+  goToSlide(name === 'Rose' ? 3 : 0);
+}
+
+// RESPONSIVE EDITION LABEL
+function checkW() {
+  const el = document.getElementById('edition-label');
+  if (el) el.style.display = window.innerWidth >= 768 ? 'inline' : 'none';
+}
+checkW();
+window.addEventListener('resize', checkW);
+</script>
+</body>
+</html>
